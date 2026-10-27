@@ -1,0 +1,1982 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Morse.- – pixel-art hra: nauč sa morzeovku a bráň Atlantik, Stredozemné a Čierne more pred ponorkami. Learn Morse code and defend the seas from submarines.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Morse.-">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta property="og:title" content="Morse.-">
+<meta property="og:description" content="Nauč sa morzeovku a bav sa pri tom. Learn Morse code and have fun doing it.">
+<meta property="og:image" content="icons/icon-1024.png">
+<title>Morse.-</title>
+<meta name="theme-color" content="#06111c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap">
+<style>
+/* Layout: one-screen phone console. HUD strip on top, sonar battlefield canvas in the middle (flex), morse console at the bottom.
+   Single dark look on purpose: a destroyer's sonar room at night. */
+:root{
+  --abyss:#06111c;
+  --sea:#0a2034;
+  --sea-lit:#14395a;
+  --lane:#0c2a44;
+  --sea-med:#0a3149;      /* Mediterranean: a touch lighter, toward azure */
+  --lane-med:#0d3a55;
+  --sea-lit-med:#1b4f70;  /* its waves, lifted by the same step so they read like the Atlantic's */
+  --sea-black:#05080c;    /* Black Sea: almost black, Soviet-red labels */
+  --lane-black:#090f15;
+  --soviet:#cc0000;
+  --grid:#24557a;
+  --panel:#0b1926;
+  --panel-edge:#21425f;
+  --sonar:#5fe3b0;
+  --amber:#ffb547;
+  --danger:#ff5b4d;
+  --steel:#9aa9b6;
+  --ink:#d9e8f3;
+  --ink-dim:#7f9bb2;
+  --f-display:"Silkscreen","Courier New",monospace;
+  --f-body:"VT323","Courier New",monospace;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+/* A game, not a document: holding the Morse key (or any button) must never start a text selection,
+   the iOS copy callout or the tap highlight. Only the XML box stays selectable. */
+html,body,button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+textarea,input{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+html{height:100%;background:var(--abyss)}
+body{height:100%;margin:0;background:var(--abyss);color:var(--ink);font-family:var(--f-body);font-size:20px;line-height:1.15;overflow:hidden;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+.app{height:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:8px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:8px}
+
+/* HUD */
+.hud{display:flex;align-items:flex-end;gap:14px}
+.hud-cell{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lbl{font-family:var(--f-display);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.val{font-family:var(--f-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.val.sector{color:var(--sonar)}
+.hud .spacer{flex:1}
+.lives{display:flex;gap:4px;color:var(--danger);padding-bottom:2px}
+.lives svg{width:16px;height:14px;display:block}
+.lives .lost{color:var(--panel-edge)}
+.pixel-btn{background:var(--panel);border:2px solid var(--panel-edge);box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);font-family:var(--f-display);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:8px 10px;cursor:pointer;min-height:36px}
+.pixel-btn:active{transform:translateY(1px);box-shadow:none}
+.pixel-btn[aria-pressed="true"]{border-color:var(--sonar);color:var(--sonar)}
+.pause-btn{width:36px;padding:0;font-size:13px}
+.timebar{height:8px;background:var(--panel);border:2px solid var(--panel-edge);position:relative;overflow:hidden}
+.timebar span{position:absolute;inset:0 auto 0 0;width:0;background:var(--sonar)}
+
+/* Battlefield */
+.field{position:relative;flex:1;min-height:0;border:2px solid var(--panel-edge);background:var(--sea);overflow:hidden}
+.field canvas{position:absolute;inset:0;display:block;image-rendering:pixelated}
+.toast{position:absolute;left:50%;top:10px;transform:translate(-50%,-6px);max-width:calc(100% - 20px);font-family:var(--f-display);font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--panel);border:2px solid var(--sonar);color:var(--sonar);padding:6px 10px;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none;text-align:center}
+.toast{--ls:.06em}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{border-color:var(--danger);color:var(--danger)}
+.toast.warn{border-color:var(--amber);color:var(--amber)}
+
+/* Morse console */
+.console{display:flex;flex-direction:column;gap:8px}
+.readout{display:flex;gap:8px}
+.slots{display:flex;gap:4px}
+.slot{width:44px;height:50px;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:24px;background:var(--panel);border:2px solid var(--panel-edge);color:var(--panel-edge)}
+.slot.word{width:auto;min-width:44px;padding:0 8px;font-size:16px}
+.slot.filled{border-color:var(--sonar);color:var(--sonar)}
+.slot.last{color:var(--ink-dim)}
+.buffer{flex:1;min-width:0;background:var(--panel);border:2px solid var(--panel-edge);padding:4px 10px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.sym{display:flex;gap:5px;align-items:center;height:12px}
+.sym i{display:block;height:8px;background:var(--amber)}
+.sym i.dot{width:8px}
+.sym i.dash{width:24px}
+.hint{font-size:19px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint b{color:var(--amber);font-weight:400}
+.cheat{background:var(--panel);border:2px solid var(--panel-edge);padding:4px 8px;display:flex;flex-direction:column;gap:2px}
+.cheat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:0 6px;font-size:18px;font-variant-numeric:tabular-nums}
+.cheat-row.letters{grid-template-columns:repeat(3,1fr);color:var(--sonar);font-size:20px}
+.cheat-row span{white-space:nowrap}
+.cheat-row b{font-family:var(--f-display);font-size:11px;margin-right:4px;color:var(--ink)}
+.cheat-row.letters b{color:var(--sonar);font-size:12px}
+.tools{display:flex;gap:6px}
+.tools .pixel-btn{flex:1;min-width:0;padding-inline:4px}
+.key{position:relative;height:78px;border:3px solid var(--sonar);background:var(--panel);color:var(--sonar);box-shadow:inset 0 -5px 0 rgba(0,0,0,.4);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.key.down{background:var(--sonar);color:var(--abyss);box-shadow:none;transform:translateY(2px)}
+.key-label{font-family:var(--f-display);font-weight:700;font-size:16px;letter-spacing:.14em}
+.key-sub{font-size:17px;opacity:.85}
+.key-bar{position:absolute;left:8px;right:8px;top:6px;height:4px;background:rgba(0,0,0,.25)}
+.key-bar span{position:absolute;inset:0 auto 0 0;width:0;background:var(--amber)}
+.key-bar span.dash{background:var(--danger)}
+
+/* Overlay screens */
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(6,17,28,.9);display:flex;align-items:center;justify-content:center;overflow:auto;padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.card{width:100%;max-width:420px;margin:auto;background:var(--panel);border:3px solid var(--panel-edge);box-shadow:6px 6px 0 rgba(0,0,0,.45);padding:20px 18px;display:flex;flex-direction:column;gap:14px}
+.card canvas{align-self:center;image-rendering:pixelated;max-width:100%}
+.card h1,.card h2{margin:0;font-family:var(--f-display);font-weight:700;text-wrap:balance;text-align:center;letter-spacing:.04em}
+.card h1{font-size:39px;color:var(--sonar);text-shadow:3px 3px 0 var(--abyss)}
+/* Start screen fills the height; logo, name and claim sit low in the space above the controls, near the screen's middle */
+.card.menu{min-height:100%}
+.menu-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:14px;padding-block:12px 5px}
+.card .lead{font-size:22px;color:var(--sonar)}
+.lang-seg{display:flex;gap:4px;align-self:flex-end}
+.lang-seg .pixel-btn{min-width:44px;min-height:32px;padding:4px 8px}
+.menu-row{display:flex;gap:6px}
+.menu-row .pixel-btn{flex:1;min-height:44px;border-color:var(--sonar);color:var(--sonar)}
+.card.menu #tempoNote{font-size:17px;margin-top:-6px}
+/* Rank badge on the start screen and the ranks list */
+.rank-badge{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:none;padding:6px;cursor:pointer;color:var(--ink)}
+.rank-badge canvas{image-rendering:pixelated}
+.rank-name{font-family:var(--f-display);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);--ls:.08em;text-align:center}
+.rank-next{font-size:16px;color:var(--ink-dim);text-align:center}
+.rank-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;max-height:52vh;overflow:auto}
+.rank-list li{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:10px;padding:6px 4px;border-bottom:2px solid var(--panel-edge);opacity:.45}
+.rank-list li.got{opacity:1}
+.rank-list li:last-child{border-bottom:none}
+.rank-art{display:flex;justify-content:center}
+.rank-art canvas{image-rendering:pixelated}
+.rank-text{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:16px;color:var(--ink-dim)}
+.rank-text b{font-family:var(--f-display);font-size:10px;letter-spacing:.06em;color:var(--ink);font-weight:700}
+.rank-list li.got .rank-text b{color:var(--amber)}
+.toast.promo{border-color:var(--amber);color:var(--amber)}
+.dock-card{border:2px solid var(--panel-edge);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.dock-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 14px;font-size:17px;color:var(--ink-dim)}
+.card .story{color:var(--soviet);border:2px solid var(--soviet);padding:8px 10px;font-size:18px}
+.letter-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.letter-grid .pixel-btn{--ls:.08em;min-height:44px;padding:0;font-size:14px;font-weight:700;border-color:var(--sonar);color:var(--sonar)}
+/* Title "Morse.-": dot and dash drawn on Silkscreen's pixel grid (1 unit = .125em), centred on the cap height,
+   spaced like the gap between two letters */
+.card h1 .tm{display:inline-block;height:.125em;background:currentColor;box-shadow:3px 3px 0 var(--abyss);position:relative;bottom:.25em}
+.card h1 .tm.dot{width:.125em;margin-left:.125em}
+.card h1 .tm.dash{width:.375em;margin-left:.29em;margin-right:.04em}
+/* Silkscreen's M reads as H: one dot-sized pixel centred under its crossbar (units 3.5–4.5 of its 8-unit advance).
+   --ls is the letter-spacing of the surrounding text, which the M's advance includes. */
+.mnotch{display:inline-block;width:.125em;height:.125em;background:currentColor;position:relative;bottom:.125em;margin-left:calc(-.5625em - var(--ls, 0px));margin-right:calc(.4375em + var(--ls, 0px))}
+.card h1{--ls:.04em}
+.nw{white-space:nowrap}
+.card h2{font-size:22px;color:var(--amber)}
+.card h2.bad{color:var(--danger)}
+.card p{margin:0;font-size:20px;color:var(--ink);text-align:center}
+.card .sub{color:var(--ink-dim);margin-top:-8px}
+.rules{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:19px}
+.rules li{display:grid;grid-template-columns:12px 1fr;gap:8px}
+.rules li::before{content:"";width:6px;height:6px;margin-top:7px;background:var(--sonar)}
+.rules code{font-family:var(--f-body);color:var(--amber);font-size:20px}
+.seg-label{font-family:var(--f-display);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);text-align:center}
+.seg{display:flex;gap:4px}
+.seg .pixel-btn{flex:1}
+.cta{background:var(--sonar);color:var(--abyss);border:none;box-shadow:inset 0 -4px 0 rgba(0,0,0,.3);font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;padding:14px;cursor:pointer}
+.cta:active{transform:translateY(2px);box-shadow:none}
+.cta.alt{background:transparent;color:var(--sonar);border:2px solid var(--sonar);box-shadow:none}
+.foot{font-size:17px;color:var(--ink-dim);text-align:center}
+.card .credit{font-size:16px;letter-spacing:.06em;color:var(--ink-dim)}
+.hist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.hist li{display:flex;align-items:center;gap:12px;padding-block:6px;border-bottom:2px solid var(--panel-edge)}
+.hist li:last-child{border-bottom:none}
+.hist-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.hist-when{font-size:18px}
+.hist-meta{font-size:16px;color:var(--ink-dim)}
+.hist .val{font-size:16px;font-variant-numeric:tabular-nums}
+.hist li.top .val{color:var(--sonar)}
+.hist-tools{display:flex;gap:6px}
+.hist-tools .pixel-btn{flex:1}
+.pixel-btn:disabled{opacity:.45;cursor:default}
+.card .hist-status{font-size:17px;color:var(--amber)}
+.card .hist-status:empty{display:none}
+.hist-copy{display:flex;flex-direction:column;gap:6px}
+.hist-xml{width:100%;height:140px;resize:vertical;background:var(--abyss);color:var(--ink);border:2px solid var(--panel-edge);font-family:var(--f-body);font-size:15px;padding:6px}
+.stats{display:flex;justify-content:center;gap:24px}
+.stats div{display:flex;flex-direction:column;align-items:center;gap:2px}
+.stats .val{font-size:18px}
+
+@media (max-height:640px){
+  .key{height:64px}
+  .slot{height:44px}
+  .cheat-row{font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .toast{transition:none}
+}
+</style>
+<style>
+/* What the claude.ai viewer adds around the page: keep content clear of the phone's top and bottom bars */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hud">
+    <div class="hud-cell"><span class="lbl" data-i18n="hudLevel">Level</span><span class="val" id="hudLevel">01/24</span></div>
+    <div class="hud-cell"><span class="lbl" data-i18n="hudSector">Sektor</span><span class="val sector" id="hudSector">A·B·C</span></div>
+    <div class="hud-cell"><span class="lbl" data-i18n="hudScore">Skóre</span><span class="val" id="hudScore">0</span></div>
+    <div class="spacer"></div>
+    <div class="lives" id="hudLives" aria-label="Životy"></div>
+    <button class="pixel-btn pause-btn" id="btnPause" aria-label="Pauza" data-i18n-aria="pause">II</button>
+  </header>
+  <div class="timebar" title="Čas do ďalšieho sektora" data-i18n-title="timebar"><span id="timeFill"></span></div>
+
+  <main class="field" id="field">
+    <canvas id="cv" aria-label="Bojisko so súradnicovou sieťou" data-i18n-aria="field"></canvas>
+    <div class="toast" id="toast" role="status"></div>
+  </main>
+
+  <section class="console">
+    <div class="readout">
+      <div class="slots" aria-label="Zadaná súradnica" data-i18n-aria="slots">
+        <span class="slot" id="slotL">_</span>
+        <span class="slot" id="slotD">_</span>
+      </div>
+      <div class="buffer">
+        <div class="sym" id="bufSym"></div>
+        <div class="hint" id="bufHint">Ťukni kľúčom písmeno stĺpca</div>
+      </div>
+    </div>
+    <div class="cheat" id="cheat"></div>
+    <div class="tools">
+      <button class="pixel-btn" id="btnClear" data-i18n="clear">Zmazať</button>
+      <button class="pixel-btn" id="btnHelp" aria-pressed="true" data-i18n="help">Nápoveda</button>
+      <button class="pixel-btn" id="btnSound" aria-pressed="true">Zvuk</button>
+      <button class="pixel-btn" id="btnMusic" aria-pressed="true" data-i18n="music">Hudba</button>
+    </div>
+    <button class="key" id="key" aria-label="Morseov kľúč" data-i18n-aria="keyAria">
+      <span class="key-bar"><span id="keyFill"></span></span>
+      <span class="key-label" data-i18n-m="keyLabel">MORSE KĽÚČ</span>
+      <span class="key-sub" data-i18n="keySub">ťuk = bodka · podrž = čiarka</span>
+    </button>
+  </section>
+</div>
+
+<div class="overlay" id="overlay"><div class="card" id="card"></div></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- data ---------- */
+const MORSE = {A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',
+  '1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.','0':'-----'};
+// Entered coordinates are written out in the phonetic alphabet: B7 → BRAVO7.
+const PHONETIC = {A:'ALPHA',B:'BRAVO',C:'CHARLIE',D:'DELTA',E:'ECHO',F:'FOXTROT',G:'GOLF',H:'HOTEL',I:'INDIA',J:'JULIETT',K:'KILO',L:'LIMA',M:'MIKE',
+  N:'NOVEMBER',O:'OSCAR',P:'PAPA',Q:'QUEBEC',R:'ROMEO',S:'SIERRA',T:'TANGO',U:'UNIFORM',V:'VICTOR',W:'WHISKEY',X:'XRAY',Y:'YANKEE',Z:'ZULU'};
+const spoken = (letter, digit) => PHONETIC[letter] + digit;
+const DECODE = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const DIGITS = ['1','2','3','4','5','6','7','8','9','0'];   // rows top→bottom: 1–5 above the ship, 6–0 below
+const LEVEL_TIME = 60, RADAR_EVERY = 2, MAX_LIVES = 3, RING_TIME = 0.6;
+
+/* ---------- language ---------- */
+// Every visible text, Slovak and English. Functions take the values they print.
+const L10N = {
+  sk: {
+    hudLevel: 'Level', hudSector: 'Sektor', hudScore: 'Skóre',
+    lives: (n, m) => `Životy: ${n} z ${m}`, pause: 'Pauza', timebar: 'Čas do ďalšieho sektora',
+    field: 'Bojisko so súradnicovou sieťou', slots: 'Zadaná súradnica',
+    clear: 'Zmazať', help: 'Nápoveda', soundOn: 'Zvuk', soundOff: 'Ticho', music: 'Hudba',
+    keyAria: 'Morseov kľúč', keyLabel: 'MORSE KĽÚČ', keySub: 'ťuk = bodka · podrž = čiarka',
+    hintStart: 'Ťukni kľúčom písmeno stĺpca', hintRow: 'Teraz číslo riadku', hintFired: c => `Vystrelené na ${c}`,
+    tTorpedo: c => `Torpédo z ${c}!`, tShipHit: 'Torpédo zasiahlo loď!', tRange: c => `${c} je mimo dostrelu`,
+    tHit: c => `Zásah! ${c}`, tMiss: c => `Vedľa: ${c}`, tLong: 'Príliš dlhý znak', tUnknown: code => `Neznámy znak ${code}`,
+    tLetterFirst: 'Najprv písmeno stĺpca', bonus: '+250 bez zásahu', bannerSector: 'Sektor',
+    fireAt: c => `Paľba ${c}`, jammer: 'Rušičky zmenili súradnice',
+    jamStory: 'V Čiernom mori používajú nepriateľské ponorky rušičky, ktoré nám rušia radarové súradnice. Po každom posune lode sa písmená stĺpcov náhodne zmenia, čísla ostávajú.',
+    pickTitle: 'Výuka od písmena', startAt: ch => `Začať od ${ch}`,
+    noRank: 'Zatiaľ bez hodnosti', nextRank: (r, n) => `Ďalšia: ${r} od ${n} bodov`, topRank: 'Najvyššia hodnosť',
+    promoted: r => `Povýšenie: ${r}`, ranksTitle: 'Hodnosti', rankNeed: n => `od ${n} bodov v jednej hre`,
+    ranksNote: 'Hodnosť získaš skóre v jednej hre a už ju nestratíš. Vo Výuke najviac Captain (O-6), admirálske hodnosti len v režime Normálne alebo Rýchle.',
+    dockSave: 'Uložiť do doku', dockOverwrite: 'V doku už kotví uložená hra. Uložením ju prepíšeš.',
+    dockTitle: 'Dok', dockLead: 'V doku kotví tvoja uložená loď:', dockSavedAt: d => `uložené ${d}`,
+    dockRepair: n => `V doku môžeš loď opraviť: +1 život za ${n} bodov zo skóre (najviac 3 životy).`,
+    repairNeed: n => `Na opravu lode potrebuješ aspoň ${n} bodov.`, repairFull: 'Loď má plné životy, oprava netreba.',
+    repairGo: n => `Opraviť loď (−${n}) a vyplávať`,
+    dockContinue: 'Pokračovať z doku', newMission: 'Nová misia',
+    dockRepaired: n => `Loď opravená: +1 život, −${n} bodov`, dockLeft: 'Vyplávali ste z doku',
+    dockLine: (sea, n) => `V doku: ${sea}, level ${n}`,
+    startFrom: 'Vyber písmeno, od ktorého začneš v Atlantiku. Hra sa spustí v režime Výuka.',
+    claim: 'Torpédoborec na hliadke v Atlantiku, Stredomorí a v Čiernom mori.',
+    modeLabel: 'Režim hry', resumeFrom: n => `Pokračovať od levelu ${n}`, sail: 'Vyplávať',
+    guide: 'Návod', scores: 'Najlepšie skóre', record: 'Rekord', recordLine: n => `Rekord: ${n}`,
+    guideLead: 'Nauč sa morzeovku a bav sa pri tom',
+    rules: [
+      'Radar pípne každé 2 sekundy a na chvíľu ukáže ponorky v sieti.',
+      'Zameraj štvorec morzeovkou: písmeno stĺpca, potom číslo riadku. Napríklad B7 je <code>–··· ––···</code>',
+      'Krátke ťuknutie je bodka, podržanie je čiarka. Krátka pauza ukončí znak.',
+      'Ponorka, ktorú nestihneš, vystrelí torpédo. Máš 3 životy.',
+      'Každú minútu sa loď posunie o písmeno: ABC, BCD … až XYZ. Atlantik má 24 levelov, potom môžeš brániť Stredozemné a Čierne more.',
+      'V Čiernom mori nepriateľské rušičky po každom posune lode premiešajú písmená stĺpcov.',
+      'Tlačidlom ABC-.. spustíš Výuku od ľubovoľného písmena v Atlantiku.',
+      'Skóre v jednej hre ti prinesie hodnosť U.S. Navy, od Ensign po Admiral. Ťukni na odznak na úvodnej obrazovke a uvidíš všetky.',
+      'V pauze môžeš hru uložiť do doku, uložená môže byť jedna hra. Pri vyplávaní z doku si môžeš loď opraviť: +1 život za 500 bodov, najviac 3 životy.',
+    ],
+    spaceHint: 'Na počítači funguje ako kľúč aj medzerník.', back: 'Späť',
+    lastGames: 'Posledných 10 hier', noGames: 'Zatiaľ žiadna odohraná hra. Vyplávaj a tvoje skóre sa tu objaví.',
+    copyXml: 'Kopírovať XML', xmlAria: 'História hier ako XML', fileBase: 'morse-historia',
+    fTooBig: 'Súbor je príliš veľký. Vyber XML súbor exportovaný z hry Morse.-',
+    fBad: 'Súbor sa nedá načítať. Vyber XML súbor exportovaný z hry Morse.-',
+    fAdded: (a, n) => `Pridané hry zo súboru: ${a} z ${n}.`, fKnown: 'Všetky hry zo súboru už v histórii sú.',
+    xSaved: 'Štatistika je uložená. Príponu .txt môžeš kľudne zmazať.', xDeclined: 'Export zrušený.',
+    xDownloaded: 'Štatistika sa stiahla ako XML súbor.',
+    xBusy: 'Ukladanie už prebieha, skús to o chvíľu.', xNoSave: 'Ukladanie súborov tu nie je dostupné. Skopíruj XML a ulož ho ako súbor .xml.',
+    xSelected: 'Text je označený, skopíruj ho.', xCopied: 'XML je skopírované.',
+    paused: 'Pauza', pauseLine: (sea, n, sec, sc) => `${sea}, level ${n}, sektor ${sec}. Skóre ${sc}.`,
+    cont: 'Pokračovať', backMenu: 'Späť do menu',
+    sinking: 'Loď sa potápa', sunkLine: (sea, n, sec) => `Torpéda ťa zastavili: ${sea}, level ${n} (sektor ${sec}).`,
+    score: 'Skóre', best: 'Najlepšie', retry: n => `Skúsiť level ${n} znova`, newGame: 'Nová hra od ABC', homeScreen: 'Úvodná obrazovka',
+    allSeas: 'Všetky moria ubránené', seaCleared: (n, sec) => `Prešiel si všetkých ${n} levelov až po sektor ${sec}.`,
+    allSeasLine: 'Ubránil si Atlantik, Stredozemné aj Čierne more.', again: 'Hrať znova', home: 'Domov',
+    results: { sunk: 'loď potopená', home: 'návrat domov', won: 'všetky moria ubránené' },
+    seas: [
+      { name: 'Atlantik', done: 'Atlantik ubránený', ask: '' },
+      { name: 'Stredozemné more', done: 'Stredozemné more ubránené', ask: 'Brániť Stredozemné more?' },
+      { name: 'Čierne more', done: 'Čierne more ubránené', ask: 'Brániť Čierne more?' },
+    ],
+    tempo: {
+      slow: { label: 'Výuka', note: 'Vždy len 1 ponorka, strieľa až po 20 s a nezrýchľuje sa. Morzeovka je pri súradniciach počas celej hry.' },
+      normal: { label: 'Normálne', note: 'Ponorky v 1. leveli strieľajú asi po 16 s a s levelmi pritvrdzujú. Morzeovka je pri súradniciach počas celej hry.' },
+      fast: { label: 'Rýchle', note: 'Krátke pauzy medzi znakmi pre skúsených. Morzeovka pri súradniciach len v 1. leveli.' },
+    },
+  },
+  en: {
+    hudLevel: 'Level', hudSector: 'Sector', hudScore: 'Score',
+    lives: (n, m) => `Lives: ${n} of ${m}`, pause: 'Pause', timebar: 'Time to the next sector',
+    field: 'Battlefield with a coordinate grid', slots: 'Entered coordinate',
+    clear: 'Clear', help: 'Hints', soundOn: 'Sound', soundOff: 'Muted', music: 'Music',
+    keyAria: 'Morse key', keyLabel: 'MORSE KEY', keySub: 'tap = dot · hold = dash',
+    hintStart: 'Tap the column letter on the key', hintRow: 'Now the row number', hintFired: c => `Fired at ${c}`,
+    tTorpedo: c => `Torpedo from ${c}!`, tShipHit: 'Torpedo hit the ship!', tRange: c => `${c} is out of range`,
+    tHit: c => `Hit! ${c}`, tMiss: c => `Miss: ${c}`, tLong: 'Character too long', tUnknown: code => `Unknown character ${code}`,
+    tLetterFirst: 'Column letter first', bonus: '+250 no damage', bannerSector: 'Sector',
+    fireAt: c => `Fire ${c}`, jammer: 'Jammers scrambled the coordinates',
+    jamStory: 'In the Black Sea, enemy submarines use jammers that scramble our radar coordinates. After every move of the ship the column letters change at random; the numbers stay.',
+    pickTitle: 'Training from a letter', startAt: ch => `Start at ${ch}`,
+    noRank: 'No rank yet', nextRank: (r, n) => `Next: ${r} at ${n} points`, topRank: 'Highest rank',
+    promoted: r => `Promoted: ${r}`, ranksTitle: 'Ranks', rankNeed: n => `from ${n} points in one game`,
+    ranksNote: 'You earn a rank with the score of a single game and keep it for good. Training goes up to Captain (O-6); the admiral ranks need Normal or Fast mode.',
+    dockSave: 'Save to dock', dockOverwrite: 'A game is already docked. Saving replaces it.',
+    dockTitle: 'Dock', dockLead: 'Your saved ship is docked:', dockSavedAt: d => `saved ${d}`,
+    dockRepair: n => `You can repair the ship in the dock: +1 life for ${n} points of your score (up to 3 lives).`,
+    repairNeed: n => `You need at least ${n} points to repair the ship.`, repairFull: 'The ship has full lives, no repair needed.',
+    repairGo: n => `Repair (−${n}) and set sail`,
+    dockContinue: 'Continue from dock', newMission: 'New mission',
+    dockRepaired: n => `Ship repaired: +1 life, −${n} points`, dockLeft: 'Left the dock',
+    dockLine: (sea, n) => `In dock: ${sea}, level ${n}`,
+    startFrom: 'Choose the letter to start the Atlantic at. The game starts in Training mode.',
+    claim: 'A destroyer on patrol in the Atlantic, the Mediterranean and the Black Sea.',
+    modeLabel: 'Game mode', resumeFrom: n => `Continue from level ${n}`, sail: 'Set sail',
+    guide: 'How to play', scores: 'High scores', record: 'Record', recordLine: n => `Record: ${n}`,
+    guideLead: 'Learn Morse code and have fun doing it',
+    rules: [
+      'The radar pings every 2 seconds and briefly shows the submarines on the grid.',
+      'Aim at a square in Morse code: the column letter, then the row number. For example, B7 is <code>–··· ––···</code>',
+      'A short tap is a dot, holding is a dash. A short pause ends the character.',
+      'A submarine you don’t sink in time fires a torpedo. You have 3 lives.',
+      'Every minute the ship moves on by one letter: ABC, BCD … up to XYZ. The Atlantic has 24 levels, then you can defend the Mediterranean and the Black Sea.',
+      'In the Black Sea, enemy jammers shuffle the column letters after every move of the ship.',
+      'The ABC-.. button starts Training at any letter of the Atlantic.',
+      'The score of a single game earns you a U.S. Navy rank, from Ensign to Admiral. Tap the badge on the start screen to see them all.',
+      'From the pause screen you can save the game to the dock; one game can be saved. When leaving the dock you can repair the ship: +1 life for 500 points, up to 3 lives.',
+    ],
+    spaceHint: 'On a computer, the space bar works as the key too.', back: 'Back',
+    lastGames: 'Last 10 games', noGames: 'No games played yet. Set sail and your score will show up here.',
+    copyXml: 'Copy XML', xmlAria: 'Game history as XML', fileBase: 'morse-history',
+    fTooBig: 'The file is too large. Choose an XML file exported from Morse.-',
+    fBad: 'The file can’t be read. Choose an XML file exported from Morse.-',
+    fAdded: (a, n) => `Games added from the file: ${a} of ${n}.`, fKnown: 'All games in the file are already in the history.',
+    xSaved: 'Statistics saved. You can remove the .txt extension.', xDeclined: 'Export cancelled.',
+    xDownloaded: 'Statistics downloaded as an XML file.',
+    xBusy: 'A save is already in progress, try again in a moment.', xNoSave: 'Saving files isn’t available here. Copy the XML and save it as an .xml file.',
+    xSelected: 'The text is selected, copy it.', xCopied: 'XML copied.',
+    paused: 'Paused', pauseLine: (sea, n, sec, sc) => `${sea}, level ${n}, sector ${sec}. Score ${sc}.`,
+    cont: 'Continue', backMenu: 'Back to menu',
+    sinking: 'The ship is sinking', sunkLine: (sea, n, sec) => `The torpedoes stopped you: ${sea}, level ${n} (sector ${sec}).`,
+    score: 'Score', best: 'Best', retry: n => `Try level ${n} again`, newGame: 'New game from ABC', homeScreen: 'Home screen',
+    allSeas: 'All seas defended', seaCleared: (n, sec) => `You cleared all ${n} levels up to sector ${sec}.`,
+    allSeasLine: 'You defended the Atlantic, the Mediterranean and the Black Sea.', again: 'Play again', home: 'Home',
+    results: { sunk: 'ship sunk', home: 'returned home', won: 'all seas defended' },
+    seas: [
+      { name: 'Atlantic', done: 'Atlantic defended', ask: '' },
+      { name: 'Mediterranean', done: 'Mediterranean defended', ask: 'Defend the Mediterranean?' },
+      { name: 'Black Sea', done: 'Black Sea defended', ask: 'Defend the Black Sea?' },
+    ],
+    tempo: {
+      slow: { label: 'Training', note: 'Always just 1 submarine; it fires only after 20 s and never speeds up. Morse code sits by the coordinates all game.' },
+      normal: { label: 'Normal', note: 'Submarines in level 1 fire after about 16 s and get tougher every level. Morse code sits by the coordinates all game.' },
+      fast: { label: 'Fast', note: 'Short pauses between characters, for experienced players. Morse code by the coordinates in level 1 only.' },
+    },
+  },
+};
+const LANGS = Object.keys(L10N);
+let lang = (() => {
+  try {
+    const v = JSON.parse(localStorage.getItem('morshship.lang'));
+    if (L10N[v]) return v;
+  } catch (e) {}
+  return /^(sk|cs)\b/i.test(navigator.language || '') ? 'sk' : 'en';
+})();
+const tr = (key, ...args) => { const v = L10N[lang][key]; return typeof v === 'function' ? v(...args) : v; };
+
+// Campaign: the Atlantic runs ABC→XYZ, every later sea wraps on from YZA, ZAB, ABC … back to XYZ.
+// S.level counts across all seas; the visible columns start at letter (S.level - 1) mod 26.
+// name / done / ask read the current language.
+const SEAS = [{ levels: 24 }, { levels: 26 }, { levels: 26 }];
+SEAS.forEach((s, i) => ['name', 'done', 'ask'].forEach(k => Object.defineProperty(s, k, { get: () => L10N[lang].seas[i][k] })));
+let TOTAL_LEVELS = 0;
+for (const s of SEAS) { s.first = TOTAL_LEVELS + 1; TOTAL_LEVELS += s.levels; s.last = TOTAL_LEVELS; }
+const seaOf = lv => SEAS.find(s => lv <= s.last) || SEAS[SEAS.length - 1];
+const levelInSea = lv => lv - seaOf(lv).first + 1;
+const letterAt = i => LETTERS[((i % 26) + 26) % 26];
+// The three column letters of a level. In the Black Sea enemy jammers scramble them: three random distinct
+// letters per level, fixed for that level within one game (S.jam, cleared by startGame).
+const BLACK_SEA = SEAS[2];
+function sectorOf(lv) {
+  if (seaOf(lv) !== BLACK_SEA) return [0, 1, 2].map(k => letterAt(lv - 1 + k));
+  if (!S.jam[lv]) {
+    const pool = LETTERS.split('');
+    S.jam[lv] = [0, 1, 2].map(() => pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  return S.jam[lv];
+}
+// Letter shown on an absolute column index of the current level.
+const colLetter = li => sectorOf(S.level)[li - (S.level - 1)];
+const TEMPO = {
+  slow:   { dot: 260, gap: 1000 },
+  normal: { dot: 200, gap: 700 },
+  fast:   { dot: 150, gap: 450 },
+};
+Object.keys(TEMPO).forEach(k => ['label', 'note'].forEach(f => Object.defineProperty(TEMPO[k], f, { get: () => L10N[lang].tempo[k][f] })));
+const pretty = code => code.replace(/\./g, '·').replace(/-/g, '–');
+// The notch is an inline box, which would let a line break inside the word: keep such words whole.
+const mHtml = s => s.replace(/[^\s]*M[^\s]*/g, w => `<span class="nw">${w.replace(/M/g, 'M<i class="mnotch" aria-hidden="true"></i>')}</span>`);
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('morshship.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('morshship.' + k, JSON.stringify(v)); } catch (e) {} },
+};
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- state ---------- */
+const S = {
+  mode: 'menu',               // menu | play | transition | paused | over | won
+  level: 1, levelTime: 0, lives: MAX_LIVES, score: 0, levelStartScore: 0, hitThisLevel: false,
+  subs: [], fx: [], ring: null, transition: null, jam: {},
+  radarT: 1, spawnT: 0.8, shake: 0, shipFlash: 0, nextId: 1,
+  best: store.get('best', 0),
+  tempo: TEMPO[store.get('tempo', 'normal')] ? store.get('tempo', 'normal') : 'normal',
+  sound: store.get('sound', true),
+  help: store.get('help', true),
+  resume: null,
+};
+const I = { buf: '', letter: null, digit: null, last: '', down: false, t0: 0, gapTimer: null };
+let anim = 0;
+
+/* ---------- dom ---------- */
+const $ = id => document.getElementById(id);
+const field = $('field'), cv = $('cv'), ctx = cv.getContext('2d');
+const css = getComputedStyle(document.documentElement);
+const tok = n => css.getPropertyValue(n).trim();
+const C = {
+  abyss: tok('--abyss'), sea: tok('--sea'), seaLit: tok('--sea-lit'), lane: tok('--lane'), grid: tok('--grid'),
+  sonar: tok('--sonar'), amber: tok('--amber'), danger: tok('--danger'), steel: tok('--steel'),
+  ink: tok('--ink'), inkDim: tok('--ink-dim'),
+};
+// Per-sea look, same order as SEAS. Waves keep the Atlantic's pattern and contrast everywhere.
+const THEMES = [
+  { sea: C.sea,             lane: C.lane,              wave: C.seaLit,             head: C.ink,           morse: C.amber,         row: C.inkDim },
+  { sea: tok('--sea-med'),   lane: tok('--lane-med'),   wave: tok('--sea-lit-med'), head: C.ink,           morse: C.amber,         row: C.inkDim },
+  { sea: tok('--sea-black'), lane: tok('--lane-black'), wave: C.seaLit,             head: tok('--soviet'), morse: tok('--soviet'), row: tok('--soviet') },
+];
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => { const A = hexRgb(a), B = hexRgb(b); return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')'; };
+// Blends into the next sea's look while the columns slide into its first sector.
+function seaTheme() {
+  const i = SEAS.indexOf(seaOf(S.level)), j = SEAS.indexOf(seaOf(S.level + 1));
+  if (!S.transition || i === j) return THEMES[i];
+  const a = THEMES[i], b = THEMES[j], t = S.transition.shift;
+  const out = {};
+  for (const k of Object.keys(a)) out[k] = mix(a[k], b[k], t);
+  return out;
+}
+let TH = THEMES[0];
+
+/* ---------- sprites ---------- */
+const SHIP = [
+  '......................m...............',
+  '......................m...............',
+  '.....................mmm..............',
+  '....................bbbbb.............',
+  '...........kk......bwbwbwb............',
+  '...........ff......bbbbbbbb....g......',
+  '....g......ff.....bbbbbbbbbb..ggg.....',
+  '...ggg....ffff...dddddddddddddgggg....',
+  '..ddddddddddddddddddddddddddddddddddhh',
+  'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.',
+  '.HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH..',
+  '..HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH...',
+  '...rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr....',
+];
+const SHIP_PAL = { m:'#5c6b78', b:'#b7c3cc', w:'#ffd27a', f:'#3c4955', k:'#151d24', g:'#6f7f8c', d:'#8d9aa5', h:'#c5d0d8', H:'#788794', r:'#b8433b' };
+const SUB = [
+  '.......p........',
+  '.......p........',
+  '......tttt......',
+  '..hhhhhhhhhhhh..',
+  '.hhhhhhhhhhhhhhh',
+  '..hhhhhhhhhhhh..',
+];
+const SUB_SONAR = { p:'#c7ffe9', t:'#8ff0c9', h:'#5fe3b0' };
+const SUB_DANGER = { p:'#ffd0ca', t:'#ff8c80', h:'#ff5b4d' };
+
+function drawSprite(c, spr, x, y, P, pal, flip) {
+  const w = spr[0].length;
+  for (let r = 0; r < spr.length; r++) {
+    const row = spr[r];
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i];
+      if (ch === '.') continue;
+      c.fillStyle = pal[ch];
+      c.fillRect(Math.round(x + (flip ? w - 1 - i : i) * P), Math.round(y + r * P), P, P);
+    }
+  }
+}
+
+/* ---------- audio ---------- */
+const A = { ctx: null, master: null, tg: null, noiseBuf: null };
+function initAudio() {
+  try {
+    if (!A.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      A.ctx = new AC();
+      A.master = A.ctx.createGain();
+      A.master.connect(A.ctx.destination);
+      const o = A.ctx.createOscillator();
+      o.type = 'sine'; o.frequency.value = 660;
+      A.tg = A.ctx.createGain(); A.tg.gain.value = 0;
+      o.connect(A.tg); A.tg.connect(A.master); o.start();
+      const len = A.ctx.sampleRate;
+      A.noiseBuf = A.ctx.createBuffer(1, len, A.ctx.sampleRate);
+      const d = A.noiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      MUSIC.bus = A.ctx.createGain();
+      MUSIC.bus.gain.value = MUSIC_GAIN;
+      MUSIC.bus.connect(A.master);
+    }
+    A.master.gain.value = S.sound ? 0.7 : 0;
+    if (A.ctx.state === 'suspended') A.ctx.resume();
+  } catch (e) { A.ctx = null; }
+}
+function tone(on) {
+  if (!A.ctx) return;
+  const t = A.ctx.currentTime;
+  A.tg.gain.cancelScheduledValues(t);
+  A.tg.gain.setTargetAtTime(on ? 0.26 : 0, t, on ? 0.004 : 0.012);
+}
+function blip(f1, dur, { type = 'sine', vol = 0.25, f2 = f1, delay = 0 } = {}) {
+  if (!A.ctx) return;
+  const t = A.ctx.currentTime + delay;
+  const o = A.ctx.createOscillator(), g = A.ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f1, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(A.master);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(dur, { vol = 0.4, type = 'lowpass', freq = 800, delay = 0 } = {}) {
+  if (!A.ctx) return;
+  const t = A.ctx.currentTime + delay;
+  const s = A.ctx.createBufferSource(); s.buffer = A.noiseBuf;
+  const f = A.ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+  const g = A.ctx.createGain();
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(A.master);
+  s.start(t); s.stop(t + dur + 0.05);
+}
+/* ---------- music ---------- */
+// One 4-bar chiptune loop per sea, on an eighth-note grid. '.' holds the previous note (or rests at the start);
+// perc: k = kick, s = snare, h = hi-hat.
+const SONGS = [
+  { // Atlantic: calm, A minor
+    bpm: 84,
+    lead: ['A4','.','C5','.','E5','.','D5','C5',  'A4','.','F4','.','A4','C5','.','.',
+           'B4','.','D5','.','G4','.','B4','D5',  'E5','.','.','D5','C5','.','B4','.'],
+    bass: ['A2','.','A2','.','E2','.','A2','.',  'F2','.','F2','.','C3','.','F2','.',
+           'G2','.','G2','.','D3','.','G2','.',  'E2','.','E2','.','B2','.','E2','.'],
+    perc: 'k.......h.......k.......h.......',
+  },
+  { // Mediterranean: bright, D major
+    bpm: 112,
+    lead: ['D5','F#5','A5','F#5','D5','.','A4','.',  'B4','D5','G5','D5','B4','.','G4','.',
+           'C#5','E5','A5','E5','C#5','.','E5','.',  'F#5','E5','D5','.','A4','.','D5','.'],
+    bass: ['D2','.','A2','.','D2','.','A2','.',  'G2','.','D3','.','G2','.','D3','.',
+           'A2','.','E3','.','A2','.','E3','.',  'D2','.','A2','.','D2','.','A2','.'],
+    perc: 'k.h.s.h.k.h.s.h.k.h.s.h.k.h.s.hh',
+  },
+  { // Black Sea: heavy march, D minor
+    bpm: 96,
+    lead: ['D4','.','D4','F4','A4','.','.','A4',  'G4','.','G4','A4','Bb4','.','A4','G4',
+           'A4','.','E4','.','A4','.','C#5','.',  'D5','.','A4','.','F4','E4','D4','.'],
+    bass: ['D2','.','A1','.','D2','.','A1','.',  'G1','.','D2','.','G1','.','D2','.',
+           'A1','.','E2','.','A1','.','E2','.',  'D2','.','A1','.','D2','.','D2','.'],
+    perc: 'k.s.k.s.k.s.k.s.k.s.k.s.k.s.k.ss',
+  },
+];
+const NOTE_IX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const noteHz = n => {
+  const m = /^([A-G])(#|b)?(\d)$/.exec(n);
+  const midi = 12 * (+m[3] + 1) + NOTE_IX[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  return 440 * Math.pow(2, (midi - 69) / 12);
+};
+// Steps each note lasts: itself plus the holds after it.
+const holds = seq => seq.map((n, i) => { if (n === '.') return 0; let k = 1; while (seq[i + k] === '.') k++; return k; });
+SONGS.forEach(s => { s.leadLen = holds(s.lead); s.bassLen = holds(s.bass); });
+
+// Level: the music sits a constant 15 dB below the morse key tone, compared by RMS.
+// Key tone: sine at gain 0.26 → RMS 0.26/√2. Music voices: square lead at 1.0 (RMS 1.0) and triangle bass
+// at 0.8 (RMS 0.8/√3), summed as power. The bus gain scales that mix to the target; each song's `trim`
+// (dB) is what an offline render of its loop measured missing from that estimate (note decays and rests).
+const KEY_RMS = 0.26 * Math.SQRT1_2;
+const MUSIC_RMS = Math.sqrt(1.0 * 1.0 + (0.8 * 0.8) / 3);
+const MUSIC_GAIN = KEY_RMS * Math.pow(10, -15 / 20) / MUSIC_RMS;
+SONGS[0].trim = 3.95; SONGS[1].trim = 3.59; SONGS[2].trim = 3.78;
+const songGain = song => MUSIC_GAIN * Math.pow(10, song.trim / 20);
+const MUSIC = { on: store.get('music', true), bus: null, song: -1, step: 0, next: 0 };
+
+function mVoice(freq, t, dur, type, amp) {
+  const o = A.ctx.createOscillator(), g = A.ctx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(amp, t + 0.008);
+  g.gain.setTargetAtTime(amp * 0.7, t + 0.01, 0.1);
+  g.gain.setTargetAtTime(0, t + dur, 0.02);
+  o.connect(g); g.connect(MUSIC.bus);
+  o.start(t); o.stop(t + dur + 0.2);
+}
+function mPerc(kind, t) {
+  if (kind === 'k') {
+    const o = A.ctx.createOscillator(), g = A.ctx.createGain();
+    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+    o.connect(g); g.connect(MUSIC.bus); o.start(t); o.stop(t + 0.2);
+    return;
+  }
+  const s = A.ctx.createBufferSource(), f = A.ctx.createBiquadFilter(), g = A.ctx.createGain();
+  s.buffer = A.noiseBuf; f.type = 'highpass'; f.frequency.value = kind === 's' ? 1500 : 7000;
+  const dur = kind === 's' ? 0.1 : 0.03;
+  g.gain.setValueAtTime(kind === 's' ? 0.45 : 0.25, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(MUSIC.bus); s.start(t); s.stop(t + dur + 0.02);
+}
+// Called every frame: keeps ~0.25 s of notes scheduled ahead while a game is running.
+function musicTick() {
+  if (!A.ctx || !MUSIC.bus || !MUSIC.on || !S.sound || (S.mode !== 'play' && S.mode !== 'transition')) { MUSIC.song = -1; return; }
+  const idx = SEAS.indexOf(seaOf(S.transition ? S.level + 1 : S.level));
+  const now = A.ctx.currentTime;
+  const song = SONGS[idx], dt = 60 / song.bpm / 2;
+  if (idx !== MUSIC.song || MUSIC.next < now - 0.1) {
+    MUSIC.song = idx; MUSIC.step = 0; MUSIC.next = now + 0.06;
+    MUSIC.bus.gain.setValueAtTime(songGain(song), now);
+  }
+  while (MUSIC.next < now + 0.25) {
+    const i = MUSIC.step, t = MUSIC.next;
+    if (song.lead[i] !== '.') mVoice(noteHz(song.lead[i]), t, song.leadLen[i] * dt * 0.92, 'square', 1.0);
+    if (song.bass[i] !== '.') mVoice(noteHz(song.bass[i]), t, song.bassLen[i] * dt * 0.92, 'triangle', 0.8);
+    if (song.perc[i] && song.perc[i] !== '.') mPerc(song.perc[i], t);
+    MUSIC.step = (i + 1) % song.lead.length;
+    MUSIC.next += dt;
+  }
+}
+
+const sfx = {
+  ping()   { blip(1400, 0.45, { vol: 0.16, f2: 1000 }); blip(1400, 0.35, { vol: 0.05, f2: 1000, delay: 0.28 }); },
+  fire()   { noise(0.2, { vol: 0.35, type: 'bandpass', freq: 1200 }); blip(220, 0.15, { type: 'square', vol: 0.07, f2: 90 }); },
+  boom()   { noise(0.9, { vol: 0.6, freq: 500 }); blip(90, 0.5, { type: 'triangle', vol: 0.3, f2: 35 }); },
+  splash() { noise(0.35, { vol: 0.22, type: 'highpass', freq: 1500 }); },
+  launch() { blip(320, 0.7, { type: 'sawtooth', vol: 0.05, f2: 110 }); },
+  hit()    { noise(1.1, { vol: 0.7, freq: 350 }); blip(70, 0.8, { type: 'square', vol: 0.14, f2: 30 }); },
+  error()  { blip(150, 0.14, { type: 'square', vol: 0.07 }); },
+  level()  { [523, 659, 784, 1047].forEach((f, i) => blip(f, 0.14, { type: 'square', vol: 0.06, delay: i * 0.09 })); },
+  lose()   { [392, 330, 262, 196].forEach((f, i) => blip(f, 0.26, { type: 'square', vol: 0.07, delay: i * 0.18 })); },
+};
+
+/* ---------- layout ---------- */
+let W = 0, H = 0, DPR = 1, G = null;
+function resize() {
+  const r = field.getBoundingClientRect();
+  DPR = Math.min(3, window.devicePixelRatio || 1);
+  W = Math.max(1, Math.floor(r.width - 4));
+  H = Math.max(1, Math.floor(r.height - 4));
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const gutter = Math.round(Math.max(62, W * 0.17));   // wide enough for "-----" under the digits in level 1
+  const cellW = (W - gutter - 4) / 3;
+  const unit = H / 12.5;
+  const headH = unit * 1.1, shipH = unit * 1.4, cellH = unit;
+  G = {
+    gutter, cellW, cellH, headH, shipH,
+    x0: gutter, y0: headH, gridW: cellW * 3,
+    shipY: headH + 5 * cellH, yBottom: headH + 5 * cellH + shipH,
+    P: Math.max(2, Math.floor(Math.min(cellW / 24, cellH / 8.5))),
+    MS: Math.max(2, Math.min(3, Math.floor((gutter - 4) / 19), Math.floor(cellH / 10))),
+    PS: Math.max(2, Math.floor(Math.min(shipH / 13, (cellW * 3) / 44))),
+  };
+  G.shipX = G.x0 + G.gridW / 2;
+  G.shipCY = G.shipY + G.shipH / 2;
+  G.maxR = Math.hypot(Math.max(G.shipX, W - G.shipX), Math.max(G.shipCY, H - G.shipCY));
+}
+new ResizeObserver(resize).observe(field);
+resize();
+
+const rowY = r => (r < 5 ? G.y0 + r * G.cellH : G.yBottom + (r - 5) * G.cellH);
+const base = () => S.level - 1;
+const shift = () => (S.transition ? S.transition.shift : 0);
+function cellCenter(li, row) {
+  return { x: G.x0 + (li - base() - shift()) * G.cellW + G.cellW / 2, y: rowY(row) + G.cellH / 2 };
+}
+
+/* ---------- difficulty ---------- */
+// The slow tempo is the training mode: level 1 difficulty all the way from ABC to XYZ.
+// Normal / fast tighten until about level 10, then hold: at most 3 submarines, ≥ 12 s to fire, a new one
+// every ≥ 4 s. Simulated over all 76 levels, a player who fires every 4–5 s loses no lives and one at
+// 6 s per shot loses about a dozen, so every sea stays passable.
+const learning = () => S.tempo === 'slow';
+const maxSubs = lv => (learning() ? 1 : Math.min(3, 1 + Math.floor((lv + 1) / 6)));
+const fuseFor = lv => (learning()
+  ? 20 + Math.random()
+  : Math.max(12, 15.5 - 0.4 * (lv - 1)) + Math.random() * 2);
+const spawnGap = lv => (learning() ? 4.85 : Math.max(4, 5 - lv * 0.15)) + Math.random() * 1.5;
+
+/* ---------- game flow ---------- */
+function startGame(level = 1, score = 0) {
+  initAudio();
+  Object.assign(S, {
+    mode: 'play', level, levelTime: 0, lives: MAX_LIVES, score, levelStartScore: score, hitThisLevel: false,
+    subs: [], fx: [], ring: null, transition: null, radarT: 1, spawnT: 0.6, shake: 0, shipFlash: 0, resume: null,
+    inGame: true, recorded: false, jam: {},
+  });
+  clearInput(true);
+  hideOverlay();
+  renderCheat(); updateHUD();
+  requestWakeLock();
+  if (seaOf(level) === BLACK_SEA) setTimeout(() => toast(tr('jammer'), 'warn'), 400);
+}
+
+function update(dt) {
+  S.levelTime += dt;
+  if (S.levelTime >= LEVEL_TIME) { startTransition(); return; }
+
+  for (const s of S.subs) s.age += dt;
+  const firing = S.subs.filter(s => s.age >= s.fuse);
+  if (firing.length) {
+    S.subs = S.subs.filter(s => s.age < s.fuse);
+    firing.forEach(launchTorpedo);
+  }
+
+  S.radarT -= dt;
+  if (S.radarT <= 0) { S.radarT += RADAR_EVERY; radarPing(); }
+
+  S.spawnT -= dt;
+  if (S.spawnT <= 0) {
+    if (S.subs.length < maxSubs(S.level)) spawnSub();
+    S.spawnT = spawnGap(S.level);
+  }
+}
+
+function spawnSub() {
+  const free = [];
+  for (let c = 0; c < 3; c++) for (let r = 0; r < 10; r++) {
+    const li = base() + c;
+    if (!S.subs.some(s => s.li === li && s.row === r)) free.push([li, r]);
+  }
+  if (!free.length) return;
+  const [li, row] = free[Math.floor(Math.random() * free.length)];
+  S.subs.push({ id: S.nextId++, li, row, age: 0, fuse: fuseFor(S.level), revealAt: -99, flip: Math.random() < 0.5 });
+}
+
+function radarPing() {
+  S.ring = { t0: anim };
+  sfx.ping();
+  const speed = G.maxR / RING_TIME;
+  for (const s of S.subs) {
+    const p = cellCenter(s.li, s.row);
+    s.revealAt = anim + Math.hypot(p.x - G.shipX, p.y - G.shipCY) / speed;
+  }
+}
+
+function launchTorpedo(sub) {
+  const from = cellCenter(sub.li, sub.row);
+  const tx = Math.min(Math.max(from.x, G.shipX - G.PS * 15), G.shipX + G.PS * 15);
+  const ty = G.shipCY + (from.y < G.shipCY ? -G.PS * 2 : G.PS * 3);
+  S.fx.push({ type: 'torpedo', x0: from.x, y0: from.y, x1: tx, y1: ty, t: 0, dur: 1.0, onDone: torpedoHit });
+  sfx.launch();
+  toast(tr('tTorpedo', spoken(colLetter(sub.li), DIGITS[sub.row])), 'bad');
+}
+
+function torpedoHit() {
+  if (S.mode !== 'play' && S.mode !== 'transition') return;
+  S.lives--;
+  S.hitThisLevel = true;
+  S.shake = reduceMotion ? 0 : 1;
+  S.shipFlash = 0.5;
+  boom(G.shipX + (Math.random() - 0.5) * G.PS * 20, G.shipCY, true);
+  sfx.hit();
+  toast(tr('tShipHit'), 'bad');
+  updateHUD();
+  if (S.lives <= 0) gameOver();
+}
+
+function fire(letter, digit) {
+  const col = sectorOf(S.level).indexOf(letter);
+  const row = DIGITS.indexOf(digit);
+  const coord = spoken(letter, digit);
+  if (col < 0) {
+    sfx.error();
+    toast(tr('tRange', coord), 'warn');
+    return;
+  }
+  const li = base() + col;
+  const sub = S.subs.find(s => s.li === li && s.row === row);
+  if (sub) S.subs = S.subs.filter(s => s !== sub);   // resolved now so it can't fire while the shell flies
+  const to = cellCenter(li, row);
+  sfx.fire();
+  S.fx.push({ type: 'mark', li, row, t: 0, dur: 1.2, label: tr('fireAt', coord) });
+  S.fx.push({
+    type: 'shell', x0: G.shipX, y0: G.shipY + G.PS * 3, x1: to.x, y1: to.y, t: 0, dur: 0.4,
+    onDone: () => {
+      if (sub) {
+        const pts = 100 + 10 * S.level + Math.max(0, Math.round((sub.fuse - sub.age) * 10));
+        S.score += pts;
+        boom(to.x, to.y, false);
+        sfx.boom();
+        floatText(to.x, to.y, '+' + pts, C.amber);
+        toast(tr('tHit', coord));
+        updateHUD();
+        checkPromotion();
+      } else {
+        splash(to.x, to.y);
+        sfx.splash();
+        toast(tr('tMiss', coord), 'warn');
+      }
+    },
+  });
+}
+
+function startTransition() {
+  S.subs = [];
+  clearInput(true);
+  if (!S.hitThisLevel) {
+    S.score += 250;
+    floatText(G.shipX, G.shipY - G.PS * 4, tr('bonus'), C.sonar);
+  }
+  saveBest(); updateHUD(); checkPromotion();
+  if (S.level === seaOf(S.level).last) {
+    S.mode = 'won';
+    sfx.level();
+    setTimeout(showSeaEnd, 1100);
+    return;
+  }
+  beginShift();
+}
+function beginShift() {
+  S.mode = 'transition';
+  S.transition = { t: 0, shift: 0 };
+  sfx.level();
+}
+function updateTransition(dt) {
+  const tn = S.transition;
+  tn.t += dt;
+  const p = Math.min(1, Math.max(0, (tn.t - 0.3) / 1.0));
+  tn.shift = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+  if (tn.t >= 2.0) {
+    S.level++;
+    S.transition = null;
+    S.levelTime = 0; S.hitThisLevel = false; S.levelStartScore = S.score;
+    S.radarT = 0.5; S.spawnT = 1.0;
+    S.mode = 'play';
+    renderCheat(); updateHUD();
+    if (seaOf(S.level) === BLACK_SEA) toast(tr('jammer'), 'warn');
+  }
+}
+
+function gameOver() {
+  S.mode = 'over';
+  S.transition = null;
+  clearInput(true);
+  recordGame('sunk');
+  setTimeout(() => boom(G.shipX - G.PS * 8, G.shipCY, true), 250);
+  setTimeout(() => { boom(G.shipX + G.PS * 10, G.shipCY, true); sfx.boom(); }, 550);
+  sfx.lose();
+  setTimeout(showGameOver, 1500);
+}
+
+function saveBest() {
+  if (S.score > S.best) { S.best = S.score; store.set('best', S.best); }
+}
+
+/* ---------- ranks (U.S. Navy officer grades) ---------- */
+// Earned by the score of a single game and kept for good (store 'rank' = index, -1 = none yet).
+// Training can promote up to Captain; the admiral grades need Normal or Fast.
+const RANKS = [
+  { code: 'O-1',  name: 'Ensign',                         abbr: 'ENS',  min: 1000,   art: 'bar',   metal: 'gold' },
+  { code: 'O-2',  name: 'Lieutenant Junior Grade',        abbr: 'LTJG', min: 15000,  art: 'bar',   metal: 'silver' },
+  { code: 'O-3',  name: 'Lieutenant',                     abbr: 'LT',   min: 40000,  art: 'bars',  metal: 'silver' },
+  { code: 'O-4',  name: 'Lieutenant Commander',           abbr: 'LCDR', min: 70000,  art: 'leaf',  metal: 'gold' },
+  { code: 'O-5',  name: 'Commander',                      abbr: 'CDR',  min: 130000, art: 'leaf',  metal: 'silver' },
+  { code: 'O-6',  name: 'Captain',                        abbr: 'CAPT', min: 200000, art: 'eagle', metal: 'silver' },
+  { code: 'O-7',  name: 'Rear Admiral Lower Half',        abbr: 'RDML', min: 260000, art: 'stars', stars: 1 },
+  { code: 'O-8',  name: 'Rear Admiral Upper Half',        abbr: 'RADM', min: 320000, art: 'stars', stars: 2 },
+  { code: 'O-9',  name: 'Vice Admiral',                   abbr: 'VADM', min: 380000, art: 'stars', stars: 3 },
+  { code: 'O-10', name: 'Admiral',                        abbr: 'ADM',  min: 450000, art: 'stars', stars: 4 },
+];
+const TRAINING_TOP_RANK = 5;   // Captain
+const rankLabel = i => `${RANKS[i].name} (${RANKS[i].abbr})`;
+function rankFor(score, tempo) {
+  let r = -1;
+  RANKS.forEach((k, i) => { if (score >= k.min) r = i; });
+  return tempo === 'slow' ? Math.min(r, TRAINING_TOP_RANK) : r;
+}
+function loadRank() {
+  const saved = store.get('rank', null);
+  if (Number.isInteger(saved)) return Math.max(-1, Math.min(RANKS.length - 1, saved));
+  // first run of this version: rank from the games already in the history
+  return history().reduce((r, g) => Math.max(r, rankFor(g.score, g.tempo)), -1);
+}
+S.rank = loadRank();
+function checkPromotion() {
+  const r = rankFor(S.score, S.tempo);
+  if (r <= S.rank) return;
+  S.rank = r; store.set('rank', r);
+  toast(tr('promoted', rankLabel(r)), 'promo');
+  [523, 659, 784, 1047, 784, 1047].forEach((f, i) => blip(f, 0.16, { type: 'square', vol: 0.07, delay: 0.25 + i * 0.11 }));
+}
+
+// Pixel-art insignia. d = outline, b = body, h = highlight (gold or silver).
+const INSIGNIA = {
+  bar: ['ddddd', 'dbhbd', 'dbhbd', 'dbhbd', 'dbhbd', 'dbhbd', 'dbhbd', 'dbhbd', 'dbhbd', 'dbhbd', 'dbhbd', 'ddddd'],
+  bars: ['ddddddddddddd', 'dbhbdbbbdbhbd', 'dbhbdddddbhbd', 'dbhbd...dbhbd', 'dbhbd...dbhbd', 'dbhbd...dbhbd',
+         'dbhbd...dbhbd', 'dbhbd...dbhbd', 'dbhbd...dbhbd', 'dbhbdddddbhbd', 'dbhbdbbbdbhbd', 'ddddddddddddd'],
+  leaf: ['.....d.....', '....dbd....', '.d.dbhbd.d.', 'dbddbhbddbd', 'dbbbbhbbbbd', '.dbbbhbbbd.',
+         'dbbbbhbbbbd', 'dbbdbhbdbbd', '.dbbbhbbbd.', '..ddbhbdd..', '....dhd....', '.....d.....'],
+  eagle: ['dd.............dd', 'dbd...........dbd', 'dbbd...ddd...dbbd', '.dbbd.dhhbd.dbbd.', '.dbbbdbhhbbdbbbd.',
+          '..dbbbbbbbbbbbd..', '...ddbbbbbbbdd...', '.....dbbbbbd.....', '......dbbbd......', '.....dd.d.dd.....'],
+  star: ['...d...', '..dhd..', '..dhd..', 'ddbhbdd', 'dbbhbbd', '.dbbbd.', '.dbdbd.', 'dbd.dbd', 'dd...dd'],
+};
+const METAL = {
+  gold:   { d: '#6b5310', b: '#d9a82c', h: '#ffe08a' },
+  silver: { d: '#3f4c57', b: '#aebbc5', h: '#f2f6f8' },
+};
+// Draws rank i on a canvas; p = CSS pixels per art pixel. Returns nothing; sizes the canvas itself.
+function paintInsignia(cv, i, p) {
+  const k = RANKS[i];
+  const spr = INSIGNIA[k.art === 'stars' ? 'star' : k.art];
+  const n = k.stars || 1, gap = k.art === 'stars' ? 2 : 0;
+  const w = spr[0].length * n + gap * (n - 1), h = spr.length;
+  const dpr = window.devicePixelRatio || 1, P = Math.max(1, Math.round(p * dpr));
+  cv.width = w * P; cv.height = h * P;
+  cv.style.width = (w * P / dpr) + 'px'; cv.style.height = (h * P / dpr) + 'px';
+  const c = cv.getContext('2d');
+  for (let s = 0; s < n; s++) drawSprite(c, spr, s * (spr[0].length + gap) * P, 0, P, METAL[k.metal || 'silver'], false);
+}
+function paintAllInsignia(root) {
+  root.querySelectorAll('canvas[data-rank]').forEach(cv => paintInsignia(cv, +cv.dataset.rank, +cv.dataset.px || 4));
+}
+
+// Last 10 runs for the scores window, newest first. Each run is recorded once: sunk, sailed home, or all seas won.
+const RESULTS = {};
+['sunk', 'home', 'won'].forEach(k => Object.defineProperty(RESULTS, k, { enumerable: true, get: () => L10N[lang].results[k] }));
+function history() {
+  const h = store.get('history', []);
+  return Array.isArray(h) ? h : [];
+}
+const esc = s => String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
+const pad2 = n => String(n).padStart(2, '0');
+const localIso = t => {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+};
+
+// History file: date/time, reason the game ended and score per game, plus mode, sea and level when known.
+function historyXml(list) {
+  const games = list.map(r => {
+    const extra = [];
+    if (TEMPO[r.tempo]) extra.push(`    <rezim>${esc(TEMPO[r.tempo].label)}</rezim>`);
+    if (SEAS[r.sea]) extra.push(`    <more>${esc(SEAS[r.sea].name)}</more>`);
+    if (r.level) extra.push(`    <level>${r.level}</level>`);
+    return ['  <hra>',
+      `    <datum>${localIso(r.t)}</datum>`,
+      `    <dovod>${esc(RESULTS[r.result] || r.result)}</dovod>`,
+      `    <skore>${r.score}</skore>`,
+      ...extra,
+      '  </hra>'].join('\n');
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<historia hra="Morse.-" verzia="1">\n${games.join('\n')}\n</historia>\n`;
+}
+function parseHistoryXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('not xml');
+  const runs = [];
+  for (const g of doc.getElementsByTagName('hra')) {
+    const get = n => (g.getElementsByTagName(n)[0]?.textContent || '').trim();
+    const t = new Date(get('datum')).getTime();
+    const score = parseInt(get('skore'), 10);
+    if (!Number.isFinite(t) || !Number.isFinite(score) || score < 0) continue;
+    const reason = get('dovod');
+    // Files written in either language import the same way.
+    const run = { t, score: Math.min(score, 999999999), result: Object.keys(RESULTS).find(k => LANGS.some(l => L10N[l].results[k] === reason)) || reason.slice(0, 60) };
+    const tempo = Object.keys(TEMPO).find(k => LANGS.some(l => L10N[l].tempo[k].label === get('rezim')));
+    const sea = SEAS.findIndex((s, i) => LANGS.some(l => L10N[l].seas[i].name === get('more')));
+    const level = parseInt(get('level'), 10);
+    if (tempo) run.tempo = tempo;
+    if (sea >= 0) run.sea = sea;
+    if (level > 0) run.level = Math.min(level, 99);
+    runs.push(run);
+  }
+  return runs;
+}
+// Imported games join the history (duplicates skipped), newest 10 kept; a higher imported score becomes the record.
+// Returns how many of the file's games were new.
+function importRuns(runs) {
+  const key = r => Math.floor(r.t / 1000) + '|' + r.score;   // the file keeps whole seconds
+  const old = history();
+  const seen = new Set(old.map(key));
+  const fresh = runs.filter(r => { const k = key(r); if (seen.has(k)) return false; seen.add(k); return true; });
+  store.set('history', [...fresh, ...old].sort((a, b) => b.t - a.t).slice(0, 10));
+  const top = Math.max(...runs.map(r => r.score));
+  if (top > S.best) { S.best = top; store.set('best', S.best); }
+  return fresh.length;
+}
+
+function recordGame(result) {
+  if (!S.inGame || S.recorded) return;
+  S.recorded = true;
+  saveBest();
+  const run = { t: Date.now(), tempo: S.tempo, sea: SEAS.indexOf(seaOf(S.level)), level: levelInSea(S.level), score: S.score, result };
+  store.set('history', [run, ...history()].slice(0, 10));
+}
+
+function pause() {
+  if (S.mode !== 'play' && S.mode !== 'transition') return;
+  S.pausedFrom = S.mode;
+  S.mode = 'paused';
+  keyRelease(true);
+  clearInput(false);
+  showPause();
+}
+function resume() {
+  if (S.mode !== 'paused') return;
+  initAudio();
+  S.mode = S.pausedFrom || 'play';
+  hideOverlay();
+}
+
+/* ---------- effects ---------- */
+function boom(x, y, big) {
+  const parts = [], n = big ? 30 : 20;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = (big ? 95 : 65) * (0.35 + Math.random());
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 25, g: 70, size: 1 + (Math.random() * 2 | 0) });
+  }
+  S.fx.push({ type: 'boom', x, y, big, t: 0, dur: big ? 1.1 : 0.9, parts });
+}
+function splash(x, y) {
+  const parts = [];
+  for (let i = 0; i < 14; i++) {
+    parts.push({ x: x + (Math.random() - 0.5) * 10, y, vx: (Math.random() - 0.5) * 50, vy: -60 - Math.random() * 70, g: 260, size: 1 });
+  }
+  S.fx.push({ type: 'splash', x, y, t: 0, dur: 0.7, parts });
+}
+function floatText(x, y, txt, color) { S.fx.push({ type: 'text', x, y, txt, color, t: 0, dur: 1.2 }); }
+
+function updateFx(dt) {
+  const list = S.fx;
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i];
+    f.t += dt;
+    if (f.parts) for (const p of f.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; }
+    if (f.t >= f.dur && !f.done) { f.done = true; if (f.onDone) f.onDone(); }
+  }
+  S.fx = S.fx.filter(f => !f.done);
+  S.shake = Math.max(0, S.shake - dt * 2.5);
+  S.shipFlash = Math.max(0, S.shipFlash - dt);
+}
+
+/* ---------- drawing ---------- */
+const WAVES = Array.from({ length: 110 }, () => ({ x: Math.random(), y: Math.random(), w: 2 + (Math.random() * 4 | 0), s: 0.6 + Math.random() * 0.8 }));
+
+function draw() {
+  if (!G) return;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.save();
+  if (S.shake > 0) ctx.translate(Math.round((Math.random() - 0.5) * S.shake * 10), Math.round((Math.random() - 0.5) * S.shake * 10));
+
+  TH = seaTheme();
+  ctx.fillStyle = TH.sea;
+  ctx.fillRect(-12, -12, W + 24, H + 24);
+  drawWaves();
+  drawGrid();
+  drawSubs();
+  drawShip();
+  drawFx();
+  drawRing();
+  if (S.transition) drawBanner();
+  ctx.restore();
+}
+
+function drawWaves() {
+  const P = G.P, drift = reduceMotion ? 4 : 14;
+  ctx.fillStyle = TH.wave;
+  for (const w of WAVES) {
+    let x = (w.x * (W + 40) - anim * drift * w.s) % (W + 40);
+    if (x < -40) x += W + 40;
+    const y = Math.round(w.y * H / P) * P;
+    ctx.globalAlpha = 0.55;
+    ctx.fillRect(Math.round(x / P) * P, y, w.w * P, P);
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = TH.lane;
+  ctx.fillRect(0, G.shipY, W, G.shipH);
+}
+
+// Pixel dots and dashes centred on (cx, cy): dot = s×s, dash = 3s×s, gap = s.
+function drawMorse(code, cx, cy, s, color) {
+  let w = s * (code.length - 1);
+  for (const c of code) w += c === '.' ? s : 3 * s;
+  let x = Math.round(cx - w / 2);
+  const y = Math.round(cy - s / 2);
+  ctx.fillStyle = color;
+  for (const c of code) {
+    const len = c === '.' ? s : 3 * s;
+    ctx.fillRect(x, y, len, s);
+    x += len + s;
+  }
+}
+
+// Silkscreen's M reads as H: after drawing, put a dot-sized pixel centred under its crossbar
+// (units 3.5–4.5 of its 8-unit advance, the row just below the bar).
+function fillTextM(text, x, y) {
+  ctx.fillText(text, x, y);
+  if (!text.includes('M')) return;
+  const m = ctx.measureText('M'), u = m.width / 8;
+  const start = ctx.textAlign === 'center' ? x - ctx.measureText(text).width / 2 : x;
+  for (let i = text.indexOf('M'); i !== -1; i = text.indexOf('M', i + 1)) {
+    const ox = start + ctx.measureText(text.slice(0, i)).width;
+    ctx.fillRect(ox + 3.5 * u, y + m.actualBoundingBoxDescent - 2 * u, u, u);
+  }
+}
+
+function drawGrid() {
+  const { x0, cellW, cellH, headH, y0, shipY, yBottom, gridW } = G;
+  const b = base(), sh = shift();
+  // Labels carry their morse code throughout, except in the fast tempo where only level 1 has it (fading out as the ship leaves it).
+  const ma = S.tempo !== 'fast' ? 1 : S.level === 1 ? 1 - sh : 0;
+  ctx.fillStyle = C.abyss;
+  ctx.globalAlpha = 0.6; ctx.fillRect(0, 0, W, headH);
+  ctx.globalAlpha = 0.35; ctx.fillRect(0, headH, x0, H - headH);
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0, 0, gridW + 1, H); ctx.clip();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(Math.min(headH * 0.62, 22))}px Silkscreen, monospace`;
+  for (let k = 0; k < 4; k++) {
+    const ch = k < 3 ? sectorOf(S.level)[k] : sectorOf(S.level + 1)[2];
+    const x = x0 + (k - sh) * cellW;
+    const sel = I.letter === ch;
+    if (sel) {
+      ctx.fillStyle = C.sonar; ctx.globalAlpha = 0.09;
+      ctx.fillRect(x, headH, cellW, H - headH);
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = sel ? C.sonar : TH.head;
+    fillTextM(ch, x + cellW / 2, headH * (0.5 - 0.14 * ma) + 1);
+    if (ma > 0) {
+      ctx.globalAlpha = ma;
+      drawMorse(MORSE[ch], x + cellW / 2, headH * 0.8, G.MS, TH.morse);
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  for (let k = 0; k <= 4; k++) {
+    const x = Math.round(x0 + (k - sh) * cellW) + 0.5;
+    ctx.moveTo(x, y0); ctx.lineTo(x, shipY);
+    ctx.moveTo(x, yBottom); ctx.lineTo(x, yBottom + 5 * cellH);
+  }
+  for (let r = 0; r <= 5; r++) {
+    let y = Math.round(y0 + r * cellH) + 0.5;
+    ctx.moveTo(x0, y); ctx.lineTo(x0 + gridW, y);
+    y = Math.round(yBottom + r * cellH) - 0.5;
+    ctx.moveTo(x0, y); ctx.lineTo(x0 + gridW, y);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(Math.min(cellH * (0.5 - 0.1 * ma), 18))}px Silkscreen, monospace`;
+  for (let r = 0; r < 10; r++) {
+    ctx.fillStyle = TH.row;
+    ctx.fillText(DIGITS[r], x0 / 2, rowY(r) + cellH * (0.5 - 0.16 * ma) + 1);
+    if (ma > 0) {
+      ctx.globalAlpha = ma;
+      drawMorse(MORSE[DIGITS[r]], x0 / 2, rowY(r) + cellH * 0.76, G.MS, TH.morse);
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function brackets(x, y, w, h, color, len) {
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + len); ctx.lineTo(x, y); ctx.lineTo(x + len, y);
+  ctx.moveTo(x + w - len, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + len);
+  ctx.moveTo(x + w, y + h - len); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - len, y + h);
+  ctx.moveTo(x + len, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - len);
+  ctx.stroke();
+}
+
+// Pixel-font label centred on (x, y), shrunk to fit maxW.
+function pixelLabel(text, x, y, maxW, fs) {
+  ctx.font = `700 ${fs}px Silkscreen, monospace`;
+  const w = ctx.measureText(text).width;
+  if (w > maxW) ctx.font = `700 ${Math.max(6, Math.floor(fs * maxW / w))}px Silkscreen, monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  fillTextM(text, x, y);
+}
+
+// A radar contact: the submarine with its coordinate in the phonetic alphabet underneath (e.g. ALPHA7).
+function drawSubs() {
+  const P = Math.max(2, Math.floor(Math.min(G.cellW / 24, G.cellH / 11)));
+  const sw = SUB[0].length * P, shh = SUB.length * P;
+  const fs = Math.max(8, Math.min(13, Math.round(G.cellH * 0.26)));
+  for (const s of S.subs) {
+    if (anim < s.revealAt) continue;
+    const a = 1 - (anim - s.revealAt) / 1.4;
+    if (a <= 0.02) continue;
+    const danger = s.fuse - s.age < 4;
+    const c = cellCenter(s.li, s.row);
+    const top = c.y - (shh + 3 + fs) / 2;
+    ctx.globalAlpha = Math.min(1, a * 1.2);
+    drawSprite(ctx, SUB, c.x - sw / 2, top, P, danger ? SUB_DANGER : SUB_SONAR, s.flip);
+    ctx.fillStyle = danger ? C.danger : C.sonar;
+    pixelLabel(spoken(colLetter(s.li), DIGITS[s.row]), c.x, top + shh + 3 + fs / 2 + 1, G.cellW - 12, fs);
+    const x = c.x - G.cellW / 2 + 3, y = c.y - G.cellH / 2 + 3;
+    brackets(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.round(G.cellW - 6), Math.round(G.cellH - 6), danger ? C.danger : C.sonar, Math.max(5, G.cellH * 0.22));
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawShip() {
+  const PS = G.PS, sw = SHIP[0].length * PS, shh = SHIP.length * PS;
+  const bob = reduceMotion ? 0 : (Math.sin(anim * 2.2) > 0.6 ? -1 : 0);
+  const x = Math.round(G.shipX - sw / 2), y = Math.round(G.shipY + G.shipH - shh - PS * 0.5) + bob * PS;
+  if (S.mode !== 'over' || anim % 0.3 < 0.2) {
+    drawSprite(ctx, SHIP, x, y, PS, SHIP_PAL, false);
+    if (S.shipFlash > 0) {
+      ctx.globalAlpha = S.shipFlash; ctx.fillStyle = C.danger;
+      ctx.fillRect(x, y + shh - 5 * PS, sw, 5 * PS);
+      ctx.globalAlpha = 1;
+    }
+  }
+  // stern wake and bow wave
+  const wl = y + shh - PS;
+  ctx.fillStyle = '#d7ecff';
+  for (let i = 0; i < 16; i++) {
+    const jitter = Math.sin(i * 12.9 + Math.floor(anim * 8) * 3.1);
+    const wx = x - PS * 2 - i * PS * 1.6 - ((anim * 18) % (PS * 1.6));
+    ctx.globalAlpha = Math.max(0, 0.8 - i * 0.05);
+    ctx.fillRect(Math.round(wx), Math.round(wl + (jitter > 0 ? 0 : PS) - (i % 3 === 0 ? PS : 0)), PS, PS);
+  }
+  ctx.globalAlpha = 0.7;
+  for (let i = 0; i < 3; i++) ctx.fillRect(x + sw - PS * (2 - i), wl - PS * i, PS, PS);
+  ctx.globalAlpha = 1;
+}
+
+function drawRing() {
+  if (!S.ring) return;
+  const p = (anim - S.ring.t0) / RING_TIME;
+  if (p >= 1.15) { S.ring = null; return; }
+  const r = p * G.maxR;
+  ctx.strokeStyle = C.sonar; ctx.lineWidth = 2;
+  ctx.globalAlpha = Math.max(0, 0.55 * (1 - p));
+  ctx.beginPath(); ctx.arc(G.shipX, G.shipCY, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = Math.max(0, 0.18 * (1 - p));
+  ctx.beginPath(); ctx.arc(G.shipX, G.shipCY, Math.max(0, r - 10), 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawFx() {
+  const P = G.P;
+  for (const f of S.fx) {
+    const p = Math.min(1, f.t / f.dur);
+    if (f.type === 'shell') {
+      for (let k = 0; k < 4; k++) {
+        const q = Math.max(0, p - k * 0.05);
+        const x = f.x0 + (f.x1 - f.x0) * q, y = f.y0 + (f.y1 - f.y0) * q - Math.sin(q * Math.PI) * 28;
+        ctx.globalAlpha = 1 - k * 0.25; ctx.fillStyle = k ? C.amber : '#fff3c4';
+        ctx.fillRect(Math.round(x - P), Math.round(y - P), P * 2, P * 2);
+      }
+      ctx.globalAlpha = 1;
+    } else if (f.type === 'torpedo') {
+      const x = f.x0 + (f.x1 - f.x0) * p, y = f.y0 + (f.y1 - f.y0) * p;
+      ctx.fillStyle = '#d7ecff';
+      for (let k = 1; k < 8; k++) {
+        const q = Math.max(0, p - k * 0.04);
+        ctx.globalAlpha = 0.5 - k * 0.06;
+        ctx.fillRect(Math.round(f.x0 + (f.x1 - f.x0) * q - P / 2), Math.round(f.y0 + (f.y1 - f.y0) * q - P / 2), P, P);
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = C.danger;
+      ctx.fillRect(Math.round(x - P), Math.round(y - P), P * 2, P * 2);
+    } else if (f.type === 'boom') {
+      if (p < 0.2) {
+        ctx.globalAlpha = 0.5 * (1 - p / 0.2); ctx.fillStyle = C.amber;
+        ctx.beginPath(); ctx.arc(f.x, f.y, (f.big ? 30 : 20) * (0.5 + p * 3), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = p < 0.25 ? '#fff3c4' : p < 0.5 ? C.amber : p < 0.75 ? C.danger : C.steel;
+      for (const q of f.parts) { const s = q.size * P; ctx.fillRect(Math.round(q.x - s / 2), Math.round(q.y - s / 2), s, s); }
+    } else if (f.type === 'splash') {
+      ctx.fillStyle = '#cfe9ff'; ctx.globalAlpha = 1 - p;
+      for (const q of f.parts) ctx.fillRect(Math.round(q.x), Math.round(q.y), P, P);
+      ctx.globalAlpha = 1;
+    } else if (f.type === 'mark') {
+      const c = cellCenter(f.li, f.row);
+      if (Math.floor(f.t * 10) % 2 === 0) {
+        brackets(Math.round(c.x - G.cellW / 2 + 2) + 0.5, Math.round(c.y - G.cellH / 2 + 2) + 0.5, Math.round(G.cellW - 4), Math.round(G.cellH - 4), C.amber, Math.max(6, G.cellH * 0.3));
+      }
+      // "FIRE ALPHA7" tag on the targeted square: above it, or below it on the top row next to the letters
+      if (f.label) {
+        const fs = Math.max(8, Math.min(13, Math.round(G.cellH * 0.28)));
+        ctx.font = `700 ${fs}px Silkscreen, monospace`;
+        const tw = Math.min(ctx.measureText(f.label).width, W - G.x0 - 8), bw = tw + 10, bh = fs + 8;
+        const bx = Math.min(Math.max(c.x - bw / 2, G.x0 + 2), W - bw - 2);
+        const by = f.row === 0 ? c.y + G.cellH / 2 + 2 : c.y - G.cellH / 2 - bh - 2;
+        ctx.globalAlpha = f.t > f.dur - 0.3 ? Math.max(0, (f.dur - f.t) / 0.3) : 1;
+        ctx.fillStyle = C.abyss;
+        ctx.fillRect(Math.round(bx), Math.round(by), Math.round(bw), Math.round(bh));
+        ctx.strokeStyle = C.amber; ctx.lineWidth = 1;
+        ctx.strokeRect(Math.round(bx) + 0.5, Math.round(by) + 0.5, Math.round(bw) - 1, Math.round(bh) - 1);
+        ctx.fillStyle = C.amber;
+        pixelLabel(f.label, bx + bw / 2, by + bh / 2 + 1, tw, fs);
+        ctx.globalAlpha = 1;
+      }
+    } else if (f.type === 'text') {
+      ctx.globalAlpha = 1 - p; ctx.fillStyle = f.color;
+      ctx.font = `700 ${Math.max(11, Math.round(G.cellH * 0.38))}px Silkscreen, monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(f.txt, f.x, f.y - p * 30);
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function drawBanner() {
+  const next = S.level + 1, sea = seaOf(next);
+  const title = next === sea.first ? sea.name.toUpperCase() : 'LEVEL ' + String(levelInSea(next)).padStart(2, '0');
+  const y = G.y0 + G.cellH * 1.5, h = G.cellH * 2.2;
+  ctx.fillStyle = C.abyss; ctx.globalAlpha = 0.85;
+  ctx.fillRect(0, y, W, h);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = C.sonar; ctx.fillRect(0, y, W, 2); ctx.fillRect(0, y + h - 2, W, 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = C.amber;
+  let fs = Math.round(Math.min(h * 0.32, 24));
+  ctx.font = `700 ${fs}px Silkscreen, monospace`;
+  const tw = ctx.measureText(title).width;
+  if (tw > W - 24) {
+    fs = Math.floor(fs * (W - 24) / tw);
+    ctx.font = `700 ${fs}px Silkscreen, monospace`;
+  }
+  fillTextM(title, W / 2, y + h * 0.36);
+  ctx.fillStyle = C.ink;
+  ctx.font = `400 ${Math.round(Math.min(h * 0.22, 16))}px Silkscreen, monospace`;
+  fillTextM(tr('bannerSector') + ' ' + sectorOf(next).join(' · '), W / 2, y + h * 0.7);
+}
+
+/* ---------- HUD ---------- */
+const HEART = '<svg viewBox="0 0 7 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"/></svg>';
+function updateHUD() {
+  $('hudLevel').textContent = String(levelInSea(S.level)).padStart(2, '0') + '/' + seaOf(S.level).levels;
+  $('hudSector').innerHTML = mHtml(sectorOf(S.level).join('·'));
+  $('hudScore').textContent = S.score;
+  let h = '';
+  for (let i = 0; i < MAX_LIVES; i++) h += `<span class="${i < S.lives ? '' : 'lost'}">${HEART}</span>`;
+  $('hudLives').innerHTML = h;
+  $('hudLives').setAttribute('aria-label', tr('lives', S.lives, MAX_LIVES));
+}
+const timeFill = $('timeFill');
+function updateTimer() {
+  const p = S.mode === 'transition' || S.mode === 'won' ? 1 : Math.min(1, S.levelTime / LEVEL_TIME);
+  timeFill.style.width = (p * 100).toFixed(1) + '%';
+}
+
+function renderCheat() {
+  const el = $('cheat');
+  el.hidden = !S.help;
+  $('btnHelp').setAttribute('aria-pressed', String(S.help));
+  if (!S.help) return;
+  const letters = sectorOf(S.level);
+  const item = ch => `<span><b>${mHtml(ch)}</b>${pretty(MORSE[ch])}</span>`;
+  el.innerHTML =
+    `<div class="cheat-row letters">${letters.map(item).join('')}</div>` +
+    `<div class="cheat-row">${DIGITS.slice(0, 5).map(item).join('')}</div>` +
+    `<div class="cheat-row">${DIGITS.slice(5).map(item).join('')}</div>`;
+}
+
+/* ---------- morse input ---------- */
+const keyEl = $('key'), keyFill = $('keyFill');
+let toastTimer = null;
+function toast(msg, kind) {
+  const t = $('toast');
+  t.innerHTML = mHtml(msg.toUpperCase());
+  t.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast' + (kind ? ' ' + kind : ''); }, 1400);
+}
+
+function canType() { return S.mode === 'play'; }
+
+function keyPress() {
+  if (!canType() || I.down) return;
+  initAudio();
+  I.down = true;
+  I.t0 = performance.now();
+  clearTimeout(I.gapTimer);
+  tone(true);
+  keyEl.classList.add('down');
+}
+function keyRelease(silent) {
+  if (!I.down) return;
+  I.down = false;
+  tone(false);
+  keyEl.classList.remove('down');
+  keyFill.style.width = '0'; keyFill.className = '';
+  if (silent || !canType()) return;
+  const dur = performance.now() - I.t0;
+  I.buf += dur < TEMPO[S.tempo].dot ? '.' : '-';
+  if (I.buf.length > 5) {
+    toast(tr('tLong'), 'warn'); sfx.error();
+    I.buf = '';
+  } else {
+    clearTimeout(I.gapTimer);
+    I.gapTimer = setTimeout(commitChar, TEMPO[S.tempo].gap);
+  }
+  renderInput();
+}
+function updateKeyFill() {
+  const dot = TEMPO[S.tempo].dot;
+  const el = performance.now() - I.t0;
+  if (el < dot) { keyFill.style.width = (el / dot * 50).toFixed(1) + '%'; keyFill.className = ''; }
+  else { keyFill.style.width = '100%'; keyFill.className = 'dash'; }
+}
+
+function commitChar() {
+  if (!canType() || !I.buf) return;
+  const code = I.buf;
+  const ch = DECODE[code];
+  I.buf = '';
+  if (!ch) {
+    toast(tr('tUnknown', pretty(code)), 'warn'); sfx.error();
+  } else if (/[A-Z]/.test(ch)) {
+    I.letter = ch; I.digit = null; I.last = '';
+  } else if (!I.letter) {
+    toast(tr('tLetterFirst'), 'warn'); sfx.error();
+  } else {
+    I.digit = ch;
+    const l = I.letter;
+    I.last = l + ch;
+    I.letter = null; I.digit = null;
+    fire(l, ch);
+  }
+  renderInput();
+}
+
+function clearInput(full) {
+  clearTimeout(I.gapTimer);
+  I.buf = ''; I.letter = null; I.digit = null;
+  if (full) I.last = '';
+  renderInput();
+}
+
+function renderInput() {
+  const sL = $('slotL'), sD = $('slotD');
+  const showLast = !I.letter && !I.buf && I.last;
+  const ltr = I.letter || (showLast ? I.last[0] : '');
+  sL.innerHTML = `<span>${ltr ? mHtml(PHONETIC[ltr]) : '_'}</span>`;
+  sD.textContent = showLast ? I.last[1] : '_';
+  sL.className = 'slot' + (ltr ? ' word' : '') + (I.letter ? ' filled' : showLast ? ' last' : '');
+  sD.className = 'slot' + (showLast ? ' last' : '');
+  $('bufSym').innerHTML = I.buf.split('').map(s => `<i class="${s === '.' ? 'dot' : 'dash'}"></i>`).join('');
+  const hint = $('bufHint');
+  if (I.buf) {
+    const ch = DECODE[I.buf];
+    hint.innerHTML = ch ? `= <b>${ch}</b>` : '…';
+  } else if (I.letter) {
+    hint.textContent = tr('hintRow');
+  } else if (showLast) {
+    hint.textContent = tr('hintFired', spoken(I.last[0], I.last[1]));
+  } else {
+    hint.textContent = tr('hintStart');
+  }
+}
+
+keyEl.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  try { keyEl.setPointerCapture(e.pointerId); } catch (err) {}
+  keyPress();
+});
+keyEl.addEventListener('pointerup', e => { e.preventDefault(); keyRelease(false); });
+keyEl.addEventListener('pointercancel', () => keyRelease(false));
+keyEl.addEventListener('contextmenu', e => e.preventDefault());
+// Long presses anywhere in the game must not select words (e.g. MUSIC) or open the copy menu on phones.
+const typable = el => !!(el && el.closest && el.closest('textarea, input'));
+document.addEventListener('selectstart', e => { if (!typable(e.target)) e.preventDefault(); });
+document.addEventListener('contextmenu', e => { if (!typable(e.target)) e.preventDefault(); });
+keyEl.addEventListener('click', e => e.preventDefault());
+
+addEventListener('keydown', e => {
+  if (e.code === 'Space' && canType()) { e.preventDefault(); if (!e.repeat) keyPress(); }
+  else if ((e.code === 'Backspace' || e.code === 'Delete') && canType()) { e.preventDefault(); clearInput(true); }
+  else if (e.code === 'Escape' || e.code === 'KeyP') { if (S.mode === 'paused') resume(); else pause(); }
+});
+addEventListener('keyup', e => { if (e.code === 'Space' && I.down) { e.preventDefault(); keyRelease(false); } });
+
+$('btnClear').addEventListener('click', () => clearInput(true));
+$('btnHelp').addEventListener('click', () => { S.help = !S.help; store.set('help', S.help); renderCheat(); });
+function renderSound() {
+  const b = $('btnSound');
+  b.setAttribute('aria-pressed', String(S.sound));
+  b.textContent = S.sound ? tr('soundOn') : tr('soundOff');
+  $('btnMusic').setAttribute('aria-pressed', String(MUSIC.on));
+}
+$('btnMusic').addEventListener('click', () => {
+  MUSIC.on = !MUSIC.on; store.set('music', MUSIC.on);
+  initAudio(); renderSound();
+});
+
+// Re-labels the fixed parts of the page in the current language.
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-m]').forEach(el => { el.innerHTML = mHtml(tr(el.dataset.i18nM)); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', tr(el.dataset.i18nAria)));
+  document.querySelectorAll('[data-i18n-title]').forEach(el => el.setAttribute('title', tr(el.dataset.i18nTitle)));
+  renderSound(); renderInput(); updateHUD();
+}
+$('btnSound').addEventListener('click', () => {
+  S.sound = !S.sound; store.set('sound', S.sound);
+  initAudio(); renderSound();
+});
+$('btnPause').addEventListener('click', () => { if (S.mode === 'paused') resume(); else pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+let wakeLock = null;
+function requestWakeLock() {
+  try { if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {}); } catch (e) {}
+}
+
+/* ---------- overlay screens ---------- */
+const overlay = $('overlay'), card = $('card');
+function showOverlay(html, focusSel, kind) {
+  card.className = 'card' + (kind ? ' ' + kind : '');
+  card.innerHTML = html;
+  overlay.hidden = false;
+  const hero = card.querySelector('canvas.hero');
+  if (hero) {
+    // Drawn at device resolution so the 1.3× menu logo keeps square pixels.
+    const css = hero.classList.contains('big') ? 5.2 : 4;
+    const P = Math.max(1, Math.round(css * (window.devicePixelRatio || 1)));
+    hero.width = SHIP[0].length * P; hero.height = SHIP.length * P;
+    hero.style.width = (hero.width * css / P) + 'px';
+    const c = hero.getContext('2d');
+    drawSprite(c, SHIP, 0, 0, P, SHIP_PAL, false);
+  }
+  const f = card.querySelector(focusSel || '.cta');
+  if (f) setTimeout(() => f.focus({ preventScroll: true }), 30);
+}
+function hideOverlay() { overlay.hidden = true; card.innerHTML = ''; }
+
+function showMenu() {
+  S.mode = 'menu';
+  const seg = Object.entries(TEMPO).map(([k, t]) =>
+    `<button class="pixel-btn" data-tempo="${k}" aria-pressed="${S.tempo === k}">${t.label}</button>`).join('');
+  const langs = LANGS.map(l =>
+    `<button class="pixel-btn" data-lang="${l}" aria-pressed="${lang === l}" lang="${l}">${l.toUpperCase()}</button>`).join('');
+  showOverlay(`
+    <div class="lang-seg" role="group" aria-label="Jazyk / Language">${langs}</div>
+    <div class="menu-hero">
+      <canvas class="hero big" aria-hidden="true"></canvas>
+      <h1 aria-label="Morse.-">M<i class="mnotch" aria-hidden="true"></i>orse<i class="tm dot" aria-hidden="true"></i><i class="tm dash" aria-hidden="true"></i></h1>
+      <p class="sub">${tr('claim')}</p>
+    </div>
+    <button class="rank-badge" id="goRanks">
+      ${S.rank >= 0 ? `<canvas data-rank="${S.rank}" data-px="3" aria-hidden="true"></canvas>` : ''}
+      <span class="rank-name">${S.rank >= 0 ? `${RANKS[S.rank].code} · ${rankLabel(S.rank)}` : tr('noRank')}</span>
+      <span class="rank-next">${S.rank < RANKS.length - 1 ? tr('nextRank', rankLabel(S.rank + 1), fmtPts(RANKS[S.rank + 1].min)) : tr('topRank')}</span>
+    </button>
+    <div class="seg-label">${tr('modeLabel')}</div>
+    <div class="seg" id="seg">${seg}</div>
+    <p class="foot" id="tempoNote">${TEMPO[S.tempo].note}</p>
+    ${S.resume ? `<button class="cta" id="goResume">${tr('resumeFrom', levelInSea(S.resume.level))}</button>` : ''}
+    <button class="cta${S.resume ? ' alt' : ''}" id="goStart">${tr('sail')}</button>
+    <div class="menu-row">
+      <button class="pixel-btn" id="goGuide">${tr('guide')}</button>
+      <button class="pixel-btn" id="goPick" aria-label="${tr('pickTitle')}">ABC-..</button>
+      <button class="pixel-btn" id="goScores">${tr('scores')}</button>
+    </div>
+    <p class="foot">${tr('recordLine', S.best)}${loadDock() ? `<br>${tr('dockLine', seaOf(loadDock().level).name, levelInSea(loadDock().level))}` : ''}</p>
+  `, null, 'menu');
+  card.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => {
+    if (lang === b.dataset.lang) return;
+    lang = b.dataset.lang;
+    store.set('lang', lang);
+    applyLang();
+    showMenu();
+    $('goStart').focus({ preventScroll: true });
+  }));
+  card.querySelectorAll('[data-tempo]').forEach(b => b.addEventListener('click', () => {
+    S.tempo = b.dataset.tempo; store.set('tempo', S.tempo);
+    card.querySelectorAll('[data-tempo]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    $('tempoNote').textContent = TEMPO[S.tempo].note;
+  }));
+  $('goPick').addEventListener('click', showPicker);
+  $('goRanks').addEventListener('click', showRanks);
+  paintAllInsignia(card);
+  $('goStart').addEventListener('click', () => { const d = loadDock(); if (d) showDock(d); else startGame(1, 0); });
+  $('goScores').addEventListener('click', () => showScores());
+  $('goGuide').addEventListener('click', showGuide);
+  if (S.resume) $('goResume').addEventListener('click', () => startGame(S.resume.level, S.resume.score));
+}
+
+const fmtPts = n => n.toLocaleString(lang === 'sk' ? 'sk-SK' : 'en-US');
+
+// All ten grades with their insignia and the score each needs; earned ones lit.
+function showRanks() {
+  const rows = RANKS.map((k, i) => `
+    <li class="${i <= S.rank ? 'got' : ''}">
+      <span class="rank-art"><canvas data-rank="${i}" data-px="2" aria-hidden="true"></canvas></span>
+      <span class="rank-text"><b>${k.code} · ${k.name} (${k.abbr})</b><span>${tr('rankNeed', fmtPts(k.min))}</span></span>
+    </li>`).join('');
+  showOverlay(`
+    <h2>${tr('ranksTitle')}</h2>
+    <p class="foot">${tr('ranksNote')}</p>
+    <ol class="rank-list">${rows}</ol>
+    <button class="cta" id="goBack">${tr('back')}</button>
+  `, '#goBack');
+  paintAllInsignia(card);
+  $('goBack').addEventListener('click', showMenu);
+}
+
+// Training from a chosen letter: the Atlantic starts at that letter (level n starts at the n-th letter),
+// always in the Training mode.
+function showPicker() {
+  showOverlay(`
+    <h2>${tr('pickTitle')}</h2>
+    <p>${tr('startFrom')}</p>
+    <div class="letter-grid">${LETTERS.slice(0, SEAS[0].levels).split('').map((ch, i) =>
+      `<button class="pixel-btn" data-start="${i + 1}" aria-label="${tr('startAt', ch)}">${mHtml(ch)}</button>`).join('')}</div>
+    <button class="cta alt" id="goBack">${tr('back')}</button>
+  `, '[data-start]');
+  card.querySelectorAll('[data-start]').forEach(b => b.addEventListener('click', () => {
+    S.tempo = 'slow'; store.set('tempo', S.tempo);
+    startGame(+b.dataset.start, 0);
+  }));
+  $('goBack').addEventListener('click', showMenu);
+}
+
+function showGuide() {
+  showOverlay(`
+    <h2>${tr('guide')}</h2>
+    <p class="lead">${tr('guideLead')}</p>
+    <ul class="rules">
+      ${tr('rules').map(r => `<li><span>${r}</span></li>`).join('')}
+    </ul>
+    <p class="foot">${tr('spaceHint')}</p>
+    <button class="cta" id="goBack">${tr('back')}</button>
+  `);
+  $('goBack').addEventListener('click', showMenu);
+}
+
+function showScores(message) {
+  const list = history();
+  const best = Math.max(0, ...list.map(x => x.score));
+  const rows = list.map(r => {
+    const d = new Date(r.t);
+    const meta = [];
+    if (TEMPO[r.tempo]) meta.push(TEMPO[r.tempo].label);
+    if (SEAS[r.sea]) meta.push(SEAS[r.sea].name + (r.level ? `, level ${r.level}` : ''));
+    meta.push(RESULTS[r.result] || r.result || '');
+    return `<li class="${r.score > 0 && r.score === best ? 'top' : ''}">
+      <div class="hist-main">
+        <span class="hist-when">${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear() !== new Date().getFullYear() ? d.getFullYear() : ''} ${pad2(d.getHours())}:${pad2(d.getMinutes())}</span>
+        <span class="hist-meta">${esc(meta.filter(Boolean).join(' · '))}</span>
+      </div>
+      <span class="val">${r.score}</span>
+    </li>`;
+  }).join('');
+  showOverlay(`
+    <h2>${tr('scores')}</h2>
+    <div class="stats"><div><span class="lbl">${tr('record')}</span><span class="val">${S.best}</span></div></div>
+    <div class="seg-label">${tr('lastGames')}</div>
+    ${list.length
+      ? `<ol class="hist">${rows}</ol>`
+      : `<p class="foot">${tr('noGames')}</p>`}
+    <div class="hist-tools">
+      <button class="pixel-btn" id="histExport"${list.length ? '' : ' disabled'}>Export</button>
+      <button class="pixel-btn" id="histImport">Import</button>
+      <input type="file" id="histFile" accept=".xml,.txt,text/xml,application/xml,text/plain" hidden>
+    </div>
+    <p class="hist-status" id="histStatus" role="status">${message ? esc(message) : ''}</p>
+    <div class="hist-copy" id="histCopy" hidden>
+      <textarea class="hist-xml" id="histXml" readonly aria-label="${tr('xmlAria')}"></textarea>
+      <button class="pixel-btn" id="histCopyBtn">${tr('copyXml')}</button>
+    </div>
+    <button class="cta" id="goBack">${tr('back')}</button>
+    <p class="credit">Created by Ivan Hrušovský</p>
+  `, '#goBack');
+  $('goBack').addEventListener('click', showMenu);
+  $('histExport').addEventListener('click', () => exportHistory(list));
+  $('histImport').addEventListener('click', () => $('histFile').click());
+  $('histFile').addEventListener('change', async e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const status = $('histStatus');
+    if (f.size > 1000000) { status.textContent = tr('fTooBig'); return; }
+    try {
+      const runs = parseHistoryXml(await f.text());
+      if (!runs.length) throw new Error('empty');
+      const added = importRuns(runs);
+      showScores(added ? tr('fAdded', added, runs.length) : tr('fKnown'));
+    } catch (err) {
+      status.textContent = tr('fBad');
+    }
+  });
+}
+
+// Saves through the viewer's download prompt; where saving is not available, shows the XML to copy instead.
+async function exportHistory(list) {
+  const xml = historyXml(list);
+  const status = $('histStatus');
+  const d = new Date();
+  let dl = null;
+  try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+  if (dl) {
+    try {
+      await dl.save({ filename: `${tr('fileBase')}-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.xml.txt`, data: xml });
+      status.textContent = tr('xSaved');
+      return;
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'declined') { status.textContent = tr('xDeclined'); return; }
+      if (code === 'rate_limited') { status.textContent = tr('xBusy'); return; }
+    }
+  } else if (!window.claude) {
+    // Standalone copy (e.g. GitHub Pages): an ordinary browser download of a real .xml file.
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+      a.download = `${tr('fileBase')}-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      status.textContent = tr('xDownloaded');
+      return;
+    } catch (e) { /* fall through to copying */ }
+  }
+  status.textContent = tr('xNoSave');
+  $('histXml').value = xml;
+  $('histCopy').hidden = false;
+  $('histCopyBtn').onclick = () => {
+    const ta = $('histXml');
+    const fallback = () => { ta.focus(); ta.select(); status.textContent = tr('xSelected'); };
+    try {
+      navigator.clipboard.writeText(xml).then(() => { status.textContent = tr('xCopied'); }, fallback);
+    } catch (e) { fallback(); }
+  };
+}
+
+function showPause() {
+  const docked = loadDock();
+  showOverlay(`
+    <h2>${tr('paused')}</h2>
+    <p>${tr('pauseLine', seaOf(S.level).name, levelInSea(S.level), sectorOf(S.level).join(' · '), S.score)}</p>
+    <button class="cta" id="goOn">${tr('cont')}</button>
+    <button class="cta alt" id="goDock">${tr('dockSave')}</button>
+    ${docked ? `<p class="foot">${tr('dockOverwrite')}</p>` : ''}
+    <button class="cta alt" id="goMenu">${tr('backMenu')}</button>
+  `);
+  $('goOn').addEventListener('click', resume);
+  $('goDock').addEventListener('click', saveToDock);
+  $('goMenu').addEventListener('click', toMenu);
+}
+
+/* ---------- dock: one saved game ---------- */
+// Saved from the pause screen; overwrites any earlier save. Leaving the dock restores the run; the player
+// may pay REPAIR_COST points for one more life (never above MAX_LIVES).
+const REPAIR_COST = 500;
+function loadDock() {
+  const d = store.get('dock', null);
+  return d && Number.isFinite(d.level) && d.level >= 1 && d.level <= TOTAL_LEVELS ? d : null;
+}
+function saveToDock() {
+  // Paused during the slide to the next sector: dock at the start of that sector.
+  const mid = S.pausedFrom === 'transition';
+  store.set('dock', {
+    t: Date.now(), tempo: S.tempo, lives: S.lives, score: S.score,
+    level: mid ? S.level + 1 : S.level,
+    levelTime: mid ? 0 : S.levelTime,
+    levelStartScore: mid ? S.score : S.levelStartScore,
+    hitThisLevel: mid ? false : S.hitThisLevel,
+    jam: S.jam,
+  });
+  S.inGame = false;   // docked, not finished: no history entry yet
+  toMenu();
+}
+const canRepair = d => (d.lives || 1) < MAX_LIVES && d.score >= REPAIR_COST;
+function sailFromDock(repair) {
+  const d = loadDock();
+  if (!d) { startGame(1, 0); return; }
+  const fix = repair && canRepair(d) ? REPAIR_COST : 0;
+  if (TEMPO[d.tempo]) { S.tempo = d.tempo; store.set('tempo', S.tempo); }
+  startGame(d.level, d.score - fix);
+  Object.assign(S, {
+    levelTime: Math.min(LEVEL_TIME - 1, Math.max(0, d.levelTime || 0)),
+    levelStartScore: Math.max(0, (d.levelStartScore ?? d.score) - fix),
+    hitThisLevel: !!d.hitThisLevel,
+    lives: (d.lives || 1) + (fix ? 1 : 0),
+    jam: d.jam && typeof d.jam === 'object' ? d.jam : {},
+  });
+  renderCheat(); updateHUD();
+  setTimeout(() => toast(fix ? tr('dockRepaired', REPAIR_COST) : tr('dockLeft')), 300);
+}
+function showDock(d) {
+  const when = new Date(d.t);
+  let hearts = '';
+  for (let i = 0; i < MAX_LIVES; i++) hearts += `<span class="${i < d.lives ? '' : 'lost'}">${HEART}</span>`;
+  showOverlay(`
+    <h2>${tr('dockTitle')}</h2>
+    <p>${tr('dockLead')}</p>
+    <div class="dock-card">
+      <p>${tr('pauseLine', seaOf(d.level).name, levelInSea(d.level), (d.jam && d.jam[d.level] ? d.jam[d.level] : sectorOf(d.level)).join(' · '), d.score)}</p>
+      <div class="dock-meta"><span class="lives">${hearts}</span><span>${TEMPO[d.tempo] ? TEMPO[d.tempo].label : ''}</span><span>${tr('dockSavedAt', `${when.getDate()}.${when.getMonth() + 1}. ${pad2(when.getHours())}:${pad2(when.getMinutes())}`)}</span></div>
+    </div>
+    <p class="foot">${(d.lives || 1) >= MAX_LIVES ? tr('repairFull') : d.score < REPAIR_COST ? tr('repairNeed', REPAIR_COST) : tr('dockRepair', REPAIR_COST)}</p>
+    ${canRepair(d) ? `<button class="cta" id="goDockFix">${tr('repairGo', REPAIR_COST)}</button>` : ''}
+    <button class="cta${canRepair(d) ? ' alt' : ''}" id="goDockOn">${tr('dockContinue')}</button>
+    <button class="cta alt" id="goNewMission">${tr('newMission')}</button>
+    <button class="cta alt" id="goBack">${tr('back')}</button>
+  `, canRepair(d) ? '#goDockFix' : '#goDockOn');
+  if (canRepair(d)) $('goDockFix').addEventListener('click', () => sailFromDock(true));
+  $('goDockOn').addEventListener('click', () => sailFromDock(false));
+  $('goNewMission').addEventListener('click', () => startGame(1, 0));
+  $('goBack').addEventListener('click', showMenu);
+}
+
+function toMenu() {
+  recordGame('home');
+  Object.assign(S, { subs: [], fx: [], ring: null, transition: null, level: 1, levelTime: 0, score: 0, lives: MAX_LIVES, inGame: false });
+  clearInput(true);
+  updateHUD(); renderCheat();
+  showMenu();
+}
+
+function showGameOver() {
+  const sector = sectorOf(S.level).join(' · ');
+  showOverlay(`
+    <h2 class="bad">${tr('sinking')}</h2>
+    <p>${tr('sunkLine', seaOf(S.level).name, levelInSea(S.level), sector)}</p>
+    <div class="stats">
+      <div><span class="lbl">${tr('score')}</span><span class="val">${S.score}</span></div>
+      <div><span class="lbl">${tr('best')}</span><span class="val">${S.best}</span></div>
+    </div>
+    <button class="cta" id="goRetry">${tr('retry', levelInSea(S.level))}</button>
+    <button class="cta alt" id="goNew">${tr('newGame')}</button>
+    <button class="cta alt" id="goMenu">${tr('homeScreen')}</button>
+  `);
+  const lv = S.level, sc = S.levelStartScore;
+  $('goRetry').addEventListener('click', () => startGame(lv, sc));
+  $('goNew').addEventListener('click', () => startGame(1, 0));
+  $('goMenu').addEventListener('click', toMenu);
+}
+
+// End of a sea: credit, then sail on into the next sea (fresh lives, same score) or go home.
+function showSeaEnd() {
+  const sea = seaOf(S.level), next = SEAS[SEAS.indexOf(sea) + 1];
+  if (!next) recordGame('won');
+  showOverlay(`
+    <canvas class="hero" aria-hidden="true"></canvas>
+    <h2>${next ? sea.done : tr('allSeas')}</h2>
+    <p>${next ? tr('seaCleared', sea.levels, sectorOf(S.level).join(' · ')) : tr('allSeasLine')}</p>
+    ${next === BLACK_SEA ? `<p class="story">${tr('jamStory')}</p>` : ''}
+    <div class="stats">
+      <div><span class="lbl">${tr('score')}</span><span class="val">${S.score}</span></div>
+      <div><span class="lbl">${tr('best')}</span><span class="val">${S.best}</span></div>
+    </div>
+    <p class="credit">Created by Ivan Hrušovský</p>
+    ${next
+      ? `<button class="cta" id="goSea">${next.ask}</button>`
+      : `<button class="cta" id="goNew">${tr('again')}</button>`}
+    <button class="cta alt" id="goMenu">${tr('home')}</button>
+  `);
+  if (next) {
+    $('goSea').addEventListener('click', () => {
+      initAudio();
+      hideOverlay();
+      S.lives = MAX_LIVES;
+      updateHUD();
+      beginShift();
+    });
+  } else {
+    $('goNew').addEventListener('click', () => startGame(1, 0));
+  }
+  $('goMenu').addEventListener('click', toMenu);
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+  last = now;
+  if (S.mode !== 'paused') anim += dt;
+  if (S.mode === 'play') update(dt);
+  else if (S.mode === 'transition') updateTransition(dt);
+  if (S.mode !== 'paused') updateFx(dt);
+  if (I.down) updateKeyFill();
+  musicTick();
+  updateTimer();
+  draw();
+  requestAnimationFrame(frame);
+}
+
+applyLang(); renderCheat();
+try { window.claude?.hot?.snapshot?.(() => ({ level: S.level, score: S.levelStartScore })); } catch (e) {}
+const boot = d => {
+  if (d && d.level > 1) S.resume = { level: Math.min(TOTAL_LEVELS, d.level), score: d.score || 0 };
+  showMenu();
+};
+try {
+  if (window.claude?.hot?.ready) window.claude.hot.ready(boot);
+  else boot(window.claude?.hot?.data ?? {});
+} catch (e) { boot({}); }
+requestAnimationFrame(frame);
+window.MorshShip = { S, I, startGame, fire, ranks: { RANKS, rankFor, checkPromotion }, audio: { A, MUSIC, SONGS, mVoice, mPerc, noteHz, songGain, sfx, tone, blip } };
+})();
+</script>
+</body>
+</html>
