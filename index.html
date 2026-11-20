@@ -135,6 +135,9 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .card .lead{font-size:22px;color:var(--sonar)}
 .lang-seg{display:flex;gap:4px;align-self:flex-end}
 .lang-seg .pixel-btn{min-width:44px;min-height:32px;padding:4px 8px}
+/* Breathing room between the start screen's blocks: up to one claim line (23px) each when the screen has
+   room to spare, shrinking to nothing on short screens; the negative margins cancel the card's own gap */
+.menu-space{flex:1000 1 0;max-height:23px;margin-block:-7px;min-height:0}
 .menu-row{display:flex;gap:6px}
 .menu-row .pixel-btn{flex:1;min-height:44px;border-color:var(--sonar);color:var(--sonar)}
 .card.menu #tempoNote{font-size:17px;margin-top:-6px}
@@ -1725,6 +1728,7 @@ function showMenu() {
       <h1 aria-label="Morse.-">M<i class="mnotch" aria-hidden="true"></i>orse<i class="tm dot" aria-hidden="true"></i><i class="tm dash" aria-hidden="true"></i></h1>
       <p class="sub">${tr('claim')}</p>
     </div>
+    <div class="menu-space" aria-hidden="true"></div>
     <button class="rank-badge" id="goRanks">
       ${S.rank >= 0 ? `<canvas data-rank="${S.rank}" data-px="3" aria-hidden="true"></canvas>` : ''}
       <span class="rank-name">${S.rank >= 0 ? `${RANKS[S.rank].code} · ${rankLabel(S.rank)}` : tr('noRank')}</span>
@@ -1732,9 +1736,11 @@ function showMenu() {
       <span class="rank-next">${S.rank < RANKS.length - 1 ? tr('nextRank', rankLabel(S.rank + 1)) : tr('topRank')}</span>
       ${S.rank >= TRAINING_TOP_RANK && XP.train >= TRAIN_XP_CAP && S.rank < RANKS.length - 1 && xpTotal() < RANKS[S.rank + 1].min ? `<span class="rank-next">${tr('trainCapLine')}</span>` : ''}
     </button>
+    <div class="menu-space" aria-hidden="true"></div>
     <div class="seg-label">${tr('modeLabel')}</div>
     <div class="seg" id="seg">${seg}</div>
     <p class="foot" id="tempoNote">${TEMPO[S.tempo].note}</p>
+    <div class="menu-space" aria-hidden="true"></div>
     ${S.resume ? `<button class="cta" id="goResume">${tr('resumeFrom', levelInSea(S.resume.level))}</button>` : ''}
     <button class="cta${S.resume ? ' alt' : ''}" id="goStart">${tr('sail')}</button>
     <div class="menu-row">
