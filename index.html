@@ -224,6 +224,15 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 <style>
 /* What the claude.ai viewer adds around the page: keep content clear of the phone's top and bottom bars */
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+/* On an iPhone the system blurs the strip just under the status bar: on a phone with a notch or island
+   (top inset > 0) the game and the start screen sit 7px lower, taking those 7px from the bottom inset,
+   so nothing sits in that strip */
+@supports (padding:max(0px, env(safe-area-inset-top))) {
+  :root{padding-top:calc(env(safe-area-inset-top,0px) + min(7px, env(safe-area-inset-top,0px)));
+        padding-bottom:max(0px, calc(env(safe-area-inset-bottom,0px) - min(7px, env(safe-area-inset-top,0px))))}
+  .overlay{padding-top:calc(max(16px, env(safe-area-inset-top,0px)) + min(7px, env(safe-area-inset-top,0px)));
+           padding-bottom:max(16px, calc(env(safe-area-inset-bottom,0px) - min(7px, env(safe-area-inset-top,0px))))}
+}
 img{max-width:100%}
 </style>
 </head>
