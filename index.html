@@ -23,6 +23,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
+/* Silkscreen has no Č Ď Ĺ Ľ Ň Ŕ Ť (and lowercase): "Silkscreen SK" adds them, built from Silkscreen's own
+   letters and accents (SIL Open Font License; renamed as the license asks for modified versions) */
+@font-face{font-family:"Silkscreen SK";font-weight:400;unicode-range:U+010C-010F,U+0139-013A,U+013D-013E,U+0147-0148,U+0154-0155,U+0164-0165;src:url(data:font/woff2;base64,d09GMgABAAAAAAM4AA0AAAAACRQAAALpAAEAQgAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcIAZgAGgRCAqHWIV3ATYCJAM6CyAABCAFhFYHIBswB1GUDMYAgi8K7IZjw9tQVGGbbWrAagARfy4Vens1vU2EaqtIRC7tJfj//7XXfe57Mx+GgqRQRTFb5lZ9XeEAdYyqA1q+q0LXNaqsM/c/txteEu9HXJKI1ZneHK+FkCiZFMd0MHZ7F1I6BR/IEukB4kYpNDk3Wjv9vdM/tAk4pvBG/GO99/7/LerCMOqicKx9HmadZ2MDdQmkgcaRUeaJpMl0ZWaNuP7OREUV/uchoEybJGp+cXmEBB4gzwHA7ff2pZdEwR7bFWDNb6JDKgK6QM9bbPxiDT/FuvBhHsLdCYAA9N8+AHQJAwY4oE4YAXUirANSihihMo1qUsva0EWeQ7FGNKElrescx7j/dr32w/0AIgUAIAaEEZAQkiKU5zIA97kOQD/QAKCtRUAguDN5HBZ0Ps2KRe+LDdVVBmBFEJpIlZdQ6AszvNDXr1RWRMS5yi6yCCkiqMrxUxSXiIIIY3GRL2t09qhgyRYrsxm58pWud2UlRGImPRBMtcswmuARs2K4qBXLcGHYbhCQna3jRJky9hTxT9Q4gwQ2FuA/gAdopng2SkUYTiyrflSFlq3crFdiQo2EguudFR9KMfm5BdorLcl62VbcKy5wzagUZaeFM4oGOaK5l08GCMTs93xvj7LxtVrM3B2At03NAH5031/4APv5e1eIASD4i8FDCvvMQNHFU6so+2juoXY/yUpuzIWy1ZLRJdpHdIeKXAojXwLeAMgmWnxtRspXm2PU3+bpr84WsN6kLaS31/+wlMHeMYBMDzaZSOIiKkpKyogjCY84kGlUDpaNxzMQWzak4LFcRI/HJUE2B5EicblMjo6iIpHMJfEwClhIVyRCSKThCZDB5ShypjeSzvTYwcIeT+TR0GxlhXVSu07WFrZ+966RDyh0Ui1ygjNEdl6EbNZsRHYQF9DbAXhaZAYX+R9Ay+I116a8Oq4BZk2m5kybe8fcN0qNJlcpbBEUFLe/qmhjbCkMAPmtig4=) format("woff2")}
+@font-face{font-family:"Silkscreen SK";font-weight:700;unicode-range:U+010C-010F,U+0139-013A,U+013D-013E,U+0147-0148,U+0154-0155,U+0164-0165;src:url(data:font/woff2;base64,d09GMgABAAAAAAMcAA0AAAAACLAAAALLAAEAQgAAAAAAAAAAAAAAAAAAAAAAAAAAGyAcIAZgAGgRCAqHDIVMATYCJAM6CyAABCAFhD4HIBvtBhEVlIUEXyXw1JFcuUZBO3rpTblhOvtjq4zD9mYjMXkvqPj9dPbuhT4XJKAxzAqAVIytdOR8o6qIrLptNc28PXmiNVEecHJ/cEseUmRPvdwixW73SVGAGkEUYABQG2taYt2rSgFYEQ7YPmEe0NoZPbm2euRF1/8GtSb9/7+a/j+t+jFuJwuxmTstr3UVWinaV9Co3bKON2SBJBwHEolm2xKL6iUYTdrRpER67eshIKJNB03NHBcKAeAfANjz4AP2aAW7rR/A4niL9tl8QXgG3mhtZT/xBjM6C+X/4A0CEIBe5kegiwMGONDKEdAqsArIqGKUlWtAI5rTms7+oUT9GtasVnX6j7+v/L7eAZEBAJAAwiiRUiZD6J8JQA5AB+iC+kATQaJGcR8NXrDWhHiRqIbinpSr5WoWvMkcyhToUazIY6XERMxMThauFancG1YuxRAF2o8i9hGW3rGI9dij9fltHiknMjtm7LqzCo+qzwRedozWARix7ThKqy86yoofnjbtKOaLbDJChStj/Rm1VzDBelO0qMb5BRQe5tcyvHlkIQGJh8PY/PagIf5dB8saJM6HeY8IuBAm0aq1HpqwmAhBigznyxcDQICYGIJP7jr0WnJvANzlVQGe5iLwRttEGQNA8DNrwhmESBvRmFkd+k1vaOhvhD1DaiXVFNWa08U3CKFV5ZwFBeYQcAU0e1DBrz0k4c8eNvFvj6ik26M+0rHHlLL+YTmzHDtI4zMIODwLGBkYGAIfeAzwTiCTmCgGBkMFXhiQiEGxgA2bhYcMJtDAs1g0ppW+Po7AwrOReihI0cdBiCNjsJDKYuozt0/T9KT17mYLyWhDvSCVa5+e3PrJa453V7s0j0Mrf2EClgUItewLQ+Ayi7gFYbMKVFbYWaBFzyfuc11T9BRkKNSAw/a3xIKchcaK9q5FvcyNj+p7dnQXFoC/jQgAAA==) format("woff2")}
 /* Layout: one-screen phone console. HUD strip on top, sonar battlefield canvas in the middle (flex), morse console at the bottom.
    Single dark look on purpose: a destroyer's sonar room at night. */
 :root{
@@ -45,7 +49,7 @@
   --steel:#9aa9b6;
   --ink:#d9e8f3;
   --ink-dim:#7f9bb2;
-  --f-display:"Silkscreen","Courier New",monospace;
+  --f-display:"Silkscreen","Silkscreen SK","Courier New",monospace;
   --f-body:"VT323","Courier New",monospace;
   color-scheme:dark;
 }
@@ -1262,7 +1266,7 @@ function drawGrid() {
   ctx.save();
   ctx.beginPath(); ctx.rect(x0, 0, gridW + 1, H); ctx.clip();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.round(Math.min(headH * 0.62, 22))}px Silkscreen, monospace`;
+  ctx.font = `700 ${Math.round(Math.min(headH * 0.62, 22))}px Silkscreen, "Silkscreen SK", monospace`;
   for (let k = 0; k < 4; k++) {
     const ch = k < 3 ? sectorOf(S.level)[k] : sectorOf(S.level + 1)[2];
     const x = x0 + (k - sh) * cellW;
@@ -1297,7 +1301,7 @@ function drawGrid() {
   ctx.restore();
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.round(Math.min(cellH * (0.5 - 0.1 * ma), 18))}px Silkscreen, monospace`;
+  ctx.font = `700 ${Math.round(Math.min(cellH * (0.5 - 0.1 * ma), 18))}px Silkscreen, "Silkscreen SK", monospace`;
   for (let r = 0; r < 10; r++) {
     ctx.fillStyle = TH.row;
     ctx.fillText(DIGITS[r], x0 / 2, rowY(r) + cellH * (0.5 - 0.16 * ma) + 1);
@@ -1321,9 +1325,9 @@ function brackets(x, y, w, h, color, len) {
 
 // Pixel-font label centred on (x, y), shrunk to fit maxW.
 function pixelLabel(text, x, y, maxW, fs) {
-  ctx.font = `700 ${fs}px Silkscreen, monospace`;
+  ctx.font = `700 ${fs}px Silkscreen, "Silkscreen SK", monospace`;
   const w = ctx.measureText(text).width;
-  if (w > maxW) ctx.font = `700 ${Math.max(6, Math.floor(fs * maxW / w))}px Silkscreen, monospace`;
+  if (w > maxW) ctx.font = `700 ${Math.max(6, Math.floor(fs * maxW / w))}px Silkscreen, "Silkscreen SK", monospace`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   fillTextM(text, x, y);
 }
@@ -1456,7 +1460,7 @@ function drawFx() {
       // "FIRE ALPHA7" tag on the targeted square: above it, or below it on the top row next to the letters
       if (f.label) {
         const fs = Math.max(8, Math.min(13, Math.round(G.cellH * 0.28)));
-        ctx.font = `700 ${fs}px Silkscreen, monospace`;
+        ctx.font = `700 ${fs}px Silkscreen, "Silkscreen SK", monospace`;
         const tw = Math.min(ctx.measureText(f.label).width, W - G.x0 - 8), bw = tw + 10, bh = fs + 8;
         const bx = Math.min(Math.max(c.x - bw / 2, G.x0 + 2), W - bw - 2);
         const by = f.row === 0 ? c.y + G.cellH / 2 + 2 : c.y - G.cellH / 2 - bh - 2;
@@ -1471,7 +1475,7 @@ function drawFx() {
       }
     } else if (f.type === 'text') {
       ctx.globalAlpha = 1 - p; ctx.fillStyle = f.color;
-      ctx.font = `700 ${Math.max(11, Math.round(G.cellH * 0.38))}px Silkscreen, monospace`;
+      ctx.font = `700 ${Math.max(11, Math.round(G.cellH * 0.38))}px Silkscreen, "Silkscreen SK", monospace`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(f.txt, f.x, f.y - p * 30);
       ctx.globalAlpha = 1;
@@ -1490,15 +1494,15 @@ function drawBanner() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = C.amber;
   let fs = Math.round(Math.min(h * 0.32, 24));
-  ctx.font = `700 ${fs}px Silkscreen, monospace`;
+  ctx.font = `700 ${fs}px Silkscreen, "Silkscreen SK", monospace`;
   const tw = ctx.measureText(title).width;
   if (tw > W - 24) {
     fs = Math.floor(fs * (W - 24) / tw);
-    ctx.font = `700 ${fs}px Silkscreen, monospace`;
+    ctx.font = `700 ${fs}px Silkscreen, "Silkscreen SK", monospace`;
   }
   fillTextM(title, W / 2, y + h * 0.36);
   ctx.fillStyle = C.ink;
-  ctx.font = `400 ${Math.round(Math.min(h * 0.22, 16))}px Silkscreen, monospace`;
+  ctx.font = `400 ${Math.round(Math.min(h * 0.22, 16))}px Silkscreen, "Silkscreen SK", monospace`;
   fillTextM(tr('bannerSector') + ' ' + sectorOf(next).join(' · '), W / 2, y + h * 0.7);
 }
 
