@@ -14,9 +14,18 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
+<!-- Anonymous visit counts (GoatCounter: no cookies, no personal data; skips localhost) -->
+<script data-goatcounter="https://morsea.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dobivan-sk.github.io/morsea/">
 <meta property="og:title" content="Morse.-">
-<meta property="og:description" content="Nauč sa morzeovku a bav sa pri tom. Learn Morse code and have fun doing it.">
-<meta property="og:image" content="icons/icon-1024.png">
+<meta property="og:description" content="Nauč sa morzeovku a bav sa pri tom. Hraj sám alebo v Co-op s kamarátom. Learn Morse code and have fun doing it.">
+<meta property="og:image" content="https://dobivan-sk.github.io/morsea/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Morse.- Co-op: torpédoborec na sonare medzi dvoma ponorkami">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://dobivan-sk.github.io/morsea/og-image.png">
 <title>Morse.-</title>
 <meta name="theme-color" content="#06111c">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -390,6 +399,8 @@ const L10N = {
     coWaitSec: n => `Ešte ${n} s`, coAlone: 'Pokračovať sám', coEnd: 'Ukončiť hru', coBackCrew: n => `${n} je späť na palube`,
     coEndTitle: 'Koniec misie', coLostCapt: 'Spojenie s kapitánom sa stratilo.', coCaptLeft: 'Kapitán ukončil hru.',
     coAgain: 'Znova s posádkou', coSeaWait: 'Kapitán rozhoduje o ďalšej plavbe…',
+    coShare: 'Poslať pozvánku', coCopied: 'Pozvánka je skopírovaná, vlož ju do správy.',
+    coInvite: (l, c) => `Poď so mnou brániť loď ${l} v hre Morse.-! Kód miestnosti: ${c}`,
     lastGames: 'Posledných 10 hier', noGames: 'Zatiaľ žiadna odohraná hra. Vyplávaj a tvoje skóre sa tu objaví.',
     copyXml: 'Kopírovať XML', xmlAria: 'História hier ako XML', fileBase: 'morse-historia',
     fTooBig: 'Súbor je príliš veľký. Vyber XML súbor exportovaný z hry Morse.-',
@@ -479,6 +490,8 @@ const L10N = {
     coWaitSec: n => `${n} s left`, coAlone: 'Carry on alone', coEnd: 'End the game', coBackCrew: n => `${n} is back aboard`,
     coEndTitle: 'Mission over', coLostCapt: 'Lost the connection to the captain.', coCaptLeft: 'The captain ended the game.',
     coAgain: 'Again with the crew', coSeaWait: 'The captain decides where to sail next…',
+    coShare: 'Send invite', coCopied: 'Invite copied – paste it into a message.',
+    coInvite: (l, c) => `Come and defend the ${l} with me in Morse.-! Room code: ${c}`,
     lastGames: 'Last 10 games', noGames: 'No games played yet. Set sail and your score will show up here.',
     copyXml: 'Copy XML', xmlAria: 'Game history as XML', fileBase: 'morse-history',
     fTooBig: 'The file is too large. Choose an XML file exported from Morse.-',
@@ -559,6 +572,13 @@ const store = {
 };
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Anonymous counts for the public build (GoatCounter: no cookies, no personal data). The counter script is
+// added by build_github.py only, so in the claude.ai preview and on localhost nothing is sent.
+const MODE_STAT = { slow: 'vyuka', normal: 'normalne', coop: 'coop', fast: 'rychle' };
+function stat(path) {
+  try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path, title: path, event: true }); } catch (e) {}
+}
 
 /* ---------- state ---------- */
 const S = {
@@ -881,8 +901,9 @@ function startGame(level = 1, score = 0) {
   Object.assign(S, {
     mode: 'play', level, levelTime: 0, lives: MAX_LIVES, score, levelStartScore: score, hitThisLevel: false, streak: 0,
     subs: [], fx: [], ring: null, transition: null, radarT: 1, spawnT: 0.6, shake: 0, shipFlash: 0, resume: null,
-    inGame: true, recorded: false, jam: {},
+    inGame: true, recorded: false, jam: {}, startedAt: Date.now(),
   });
+  stat('hra-' + (MODE_STAT[S.tempo] || S.tempo));
   clearInput(true);
   hideOverlay();
   renderCheat(); updateHUD();
@@ -1248,6 +1269,8 @@ function recordGame(result) {
     if (CO.peer) run.partner = CO.peer.name;
   }
   store.set('history', [run, ...history()].slice(0, 10));
+  const min = (Date.now() - (S.startedAt || Date.now())) / 60000;
+  stat('trvanie-' + (min < 5 ? '0-5' : min < 10 ? '5-10' : min < 20 ? '10-20' : '20-plus') + '-min');
 }
 
 function pause() {
@@ -2257,7 +2280,7 @@ const FB_CONFIG = {
 };
 const FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const QR_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O or 1/I to mix up
+const CODE_CHARS = 'ABCDEFGHJKLNPQRSTUVXYZ23456789';   // no 0/O, 1/I, and no M/W (the pixel M reads as W)
 const CREW_WAIT = 30;            // seconds the captain waits for a crew that lost its connection
 const CAPTAIN_GRACE = 8;         // seconds the crew waits before it gives up on a silent captain
 
@@ -2358,6 +2381,7 @@ async function coopCreate() {
   if (!ref) { const st = $('coStatus'); if (st) st.textContent = tr('coNoNet'); return; }
   coopReset();
   Object.assign(CO, { on: true, role: 'h', code, ref });
+  stat('coop-miestnost');
   coopPresence();
   listen(ref.child('guest'), 'value', s => {
     const g = s.val();
@@ -2383,7 +2407,9 @@ async function coopCreate() {
   listen(ref.child('pause'), 'value', s => remotePause(s.val()));
   showLobby();
 }
-const roomLink = () => location.origin + location.pathname + '?room=' + CO.code;
+// Invites lead to the public GitHub page (its link preview shows the Co-op picture); a local copy links to itself.
+const PUBLIC_URL = 'https://dobivan-sk.github.io/morsea/';
+const roomLink = () => (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? location.origin + location.pathname : PUBLIC_URL) + '?room=' + CO.code;
 function showLobby() {
   showOverlay(`
     <h2>${tr('coTitle')}</h2>
@@ -2391,14 +2417,32 @@ function showLobby() {
     <p class="co-code">${CO.code.split('').map(c => mHtml(c)).join(' ')}</p>
     <canvas class="co-qr" id="coQr" aria-label="QR: ${esc(roomLink())}"></canvas>
     <p class="foot">${tr('coScan')}</p>
+    <button class="cta alt" id="coShare">${tr('coShare')}</button>
     <p class="co-who" id="coWho" role="status"></p>
     <button class="cta" id="coGo" disabled>${tr('coSail')}</button>
     <button class="cta alt" id="goBack">${tr('back')}</button>
   `, '#goBack', 'co-lobby');
   drawQr($('coQr'), roomLink());
   $('coGo').addEventListener('click', captainStart);
+  $('coShare').addEventListener('click', shareInvite);
   $('goBack').addEventListener('click', () => { coopLeave(); showMenu(); });
   renderLobby();
+}
+// The phone's own share sheet (Messages, Messenger, WhatsApp…) with the invite text and the room link;
+// where there is none, the invite goes to the clipboard.
+async function shareInvite() {
+  const text = tr('coInvite', shipName(), CO.code), url = roomLink();
+  const who = $('coWho');
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Morse.-', text, url }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try {
+    await navigator.clipboard.writeText(text + '\n' + url);
+    if (who) { who.textContent = tr('coCopied'); setTimeout(renderLobby, 2500); }
+  } catch (e) {
+    if (who) who.textContent = url;
+  }
 }
 function renderLobby() {
   const who = $('coWho'), go = $('coGo');
@@ -2455,6 +2499,7 @@ async function coopJoin(raw) {
     : room.phase !== 'lobby' && !(room.guest && room.guest.uid === CO.uid) ? 'coStarted' : '';
   if (err) { if (st) st.textContent = tr(err); return; }
   try { await ref.child('guest').set({ uid: CO.uid, name: playerName() }); } catch (e) { if (st) st.textContent = tr('coNoNet'); return; }
+  stat('coop-pripojenie');
   coopReset();
   Object.assign(CO, { on: true, role: 'g', code, ref, peer: { name: cleanText(room.host.name, NAME_MAX) || tr('coCaptain'), ship: cleanText(room.host.ship, SHIP_MAX) || 'Morse.-' } });
   coopPresence();
