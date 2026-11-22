@@ -90,6 +90,21 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .toast{--ls:.06em}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .toast.bad{border-color:var(--danger);color:var(--danger)}
+/* Co-op: the partner's name, score and the letter they are keying, bottom-right of the battlefield */
+.peer-tag{position:absolute;right:6px;bottom:6px;max-width:calc(100% - 12px);font-family:var(--f-display);font-size:10px;letter-spacing:.06em;text-transform:uppercase;background:var(--panel);border:2px solid var(--panel-edge);color:var(--ink-dim);padding:4px 7px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peer-tag b{color:var(--sonar);font-weight:700}
+.co-code{font-family:var(--f-display);font-weight:700;font-size:40px;letter-spacing:.12em;color:var(--amber)}
+.co-qr{align-self:center;image-rendering:pixelated;border:3px solid var(--panel-edge)}
+.co-who{font-size:18px;color:var(--ink-dim)}
+.co-who.ok{color:var(--sonar)}
+.co-in{font-family:var(--f-display);font-size:28px;letter-spacing:.3em;text-align:center;text-transform:uppercase}
+.co-score{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.co-score li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border:2px solid var(--panel-edge)}
+.co-score li span:first-child{display:flex;flex-direction:column;text-align:left}
+.co-score small{font-family:var(--f-display);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.co-score li.top{border-color:var(--sonar)}
+.co-score li.top .val{color:var(--sonar)}
+.co-score li.me b::after{content:" ◂";color:var(--amber)}
 .toast.warn{border-color:var(--amber);color:var(--amber)}
 
 /* Morse console */
@@ -134,6 +149,17 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .menu-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:14px;padding-block:12px 5px}
 .card .lead{font-size:22px;color:var(--sonar)}
 .lang-seg{display:flex;gap:4px;align-self:flex-end}
+/* Start screen top row: the player and ship on the left, the language switch on the right */
+.menu-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.menu-top .lang-seg{flex:none}
+.profile-chip{min-width:0;min-height:32px;padding:4px 0;background:none;border:none;color:var(--ink-dim);font-family:var(--f-body);font-size:18px;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:underline dotted;text-underline-offset:4px}
+.profile-chip:hover,.profile-chip:focus-visible{color:var(--ink)}
+/* Player and ship form */
+.field-row{display:flex;flex-direction:column;gap:6px}
+.field-row .seg-label{text-align:left}
+.text-in{width:100%;min-height:44px;background:var(--abyss);color:var(--ink);border:2px solid var(--panel-edge);font-family:var(--f-body);font-size:22px;padding:6px 10px;border-radius:0;outline:none}
+.text-in:focus{border-color:var(--sonar)}
+.text-in::placeholder{color:var(--ink-dim);opacity:.7}
 .lang-seg .pixel-btn{min-width:44px;min-height:32px;padding:4px 8px}
 /* Breathing room between the start screen's blocks: up to one claim line (23px) each when the screen has
    room to spare, shrinking to nothing on short screens; the negative margins cancel the card's own gap */
@@ -252,6 +278,7 @@ img{max-width:100%}
     <canvas id="cv" aria-label="Bojisko so súradnicovou sieťou" data-i18n-aria="field"></canvas>
     <div class="toast" id="toast" role="status"></div>
     <div class="notice" id="notice" role="status" hidden></div>
+    <div class="peer-tag" id="peerTag" hidden></div>
   </main>
 
   <section class="console">
@@ -318,8 +345,8 @@ const L10N = {
     noRank: 'Zatiaľ bez hodnosti', nextRank: r => `Ďalšia: ${r}`, topRank: 'Najvyššia hodnosť',
     promoted: r => `Výborne! Bol si povýšený na hodnosť ${r}.`, ranksTitle: 'Hodnosti', rankNeed: n => `od ${n} XP`,
     trainDone: 'Si pripravený vyplávať na more v Normálnom režime. Stúpaj po kariérnom rebríčku v námorníctve.',
-    trainCapLine: 'Ďalej len v režime Normálne alebo Rýchle.',
-    ranksNote: 'Skúsenosti (XP) sú body zo všetkých tvojich hier sčítané dokopy, hodnosť už nestratíš. V režime Normálne a Rýchle násobí séria zásahov za sebou: 2. až 5. zásah ×2, od 6. zásahu ×3. Výstrel vedľa alebo zásah lode sériu preruší. Výuka ti dá najviac hodnosť Lieutenant (O-3), vyššie hodnosti len v režime Normálne alebo Rýchle.',
+    trainCapLine: 'Ďalej len v režime Normálne alebo Co-op.',
+    ranksNote: 'Skúsenosti (XP) sú body zo všetkých tvojich hier sčítané dokopy, hodnosť už nestratíš. V režime Normálne a Co-op násobí séria zásahov za sebou: 2. až 5. zásah ×2, od 6. zásahu ×3. Výstrel vedľa alebo zásah lode sériu preruší. Výuka ti dá najviac hodnosť Lieutenant (O-3), vyššie hodnosti len v režime Normálne alebo Co-op.',
     dockSave: 'Uložiť do doku', dockOverwrite: 'V doku už kotví uložená hra. Uložením ju prepíšeš.',
     dockTitle: 'Dok', dockLead: 'V doku kotví tvoja uložená loď:', dockSavedAt: d => `uložené ${d}`,
     dockRepair: n => `V doku môžeš loď opraviť: +1 život za ${n} bodov zo skóre (najviac 3 životy).`,
@@ -341,10 +368,28 @@ const L10N = {
       'Každú minútu sa loď posunie o písmeno: ABC, BCD … až XYZ. Atlantik má 24 levelov, potom môžeš brániť Stredozemné a Čierne more.',
       'V Čiernom mori nepriateľské rušičky po každom posune lode premiešajú písmená stĺpcov.',
       'Tlačidlom ABC-.. spustíš Výuku od ľubovoľného písmena v Atlantiku.',
-      'Body zo všetkých hier sa sčítavajú do skúseností (XP), ktoré ti prinášajú hodnosti U.S. Navy od Ensign po Admiral. V režime Normálne a Rýchle násobí séria zásahov za sebou: 2. až 5. zásah ×2, od 6. ×3; výstrel vedľa alebo zásah lode sériu preruší. Výuka ti dá najviac hodnosť Lieutenant, vyššie len Normálne alebo Rýchle. Ťukni na odznak na úvodnej obrazovke a uvidíš všetky.',
+      'Co-op: dvaja hráči cez internet bránia jednu loď. Kapitán založí miestnosť a ukáže kód alebo QR, kamarát sa pripojí ako posádka. Kapitán strieľa spredu, posádka zozadu; životy sú spoločné, body a XP má každý vlastné.',
+      'Body zo všetkých hier sa sčítavajú do skúseností (XP), ktoré ti prinášajú hodnosti U.S. Navy od Ensign po Admiral. V režime Normálne a Co-op násobí séria zásahov za sebou: 2. až 5. zásah ×2, od 6. ×3; výstrel vedľa alebo zásah lode sériu preruší. Výuka ti dá najviac hodnosť Lieutenant, vyššie len Normálne alebo Co-op. Ťukni na odznak na úvodnej obrazovke a uvidíš všetky.',
       'V pauze môžeš hru uložiť do doku, uložená môže byť jedna hra. Pri vyplávaní z doku si môžeš loď opraviť: +1 život za 500 bodov, najviac 3 životy.',
     ],
     spaceHint: 'Na počítači funguje ako kľúč aj medzerník.', back: 'Späť',
+    welcomeTitle: 'Vitaj na palube', welcomeLead: 'Predstav sa posádke a pomenuj svoju loď. Názov lode uvidíš v tabuľke Najlepšie skóre.',
+    profileTitle: 'Hráč a loď', profileLead: 'Meno a názov lode sú uložené len v tomto zariadení.',
+    nameLabel: 'Meno hráča', shipLabel: 'Názov lode', defaultName: 'Námorník', aboard: 'Nastúpiť na palubu', save: 'Uložiť',
+    profileAria: (n, l) => `Hráč ${n}, loď ${l}. Upraviť`,
+    coTitle: 'Co-op', coLead: 'Bráňte jednu loď vo dvojici. Kapitán založí miestnosť a pozve kamaráta, ten nastúpi ako posádka.',
+    coCreate: 'Založiť miestnosť (kapitán)', coJoin: 'Pripojiť sa (posádka)', coConnecting: 'Pripájam sa…',
+    coNoNet: 'Spojenie sa nepodarilo. Skontroluj internet. V náhľade na claude.ai Co-op nefunguje, hraj ho na webe (GitHub alebo itch.io).',
+    coRoom: 'Kód miestnosti', coScan: 'Kamarát naskenuje QR kód fotoaparátom, alebo v hre zvolí Co-op → Pripojiť sa a zadá kód.',
+    coWaitCrew: 'Čakám na posádku…', coCrewIn: n => `Na palube: ${n}. Môžete vyplávať.`, coSail: 'Vyplávať spolu',
+    coCode: 'Kód miestnosti', coJoinGo: 'Pripojiť sa', coNoRoom: 'Miestnosť s týmto kódom neexistuje.', coFull: 'Na tejto lodi už je posádka.',
+    coOwn: 'To je tvoja vlastná miestnosť.', coStarted: 'Táto hra už beží.',
+    coJoined: (n, l) => `Si na palube lode ${l}. Kapitán: ${n}.`, coWaitCapt: 'Čaká sa na kapitána…',
+    coCaptain: 'Kapitán', coCrew: 'Posádka', coLate: c => `${c} už je potopená`, coPausedBy: n => `Pauzu dal spoluhráč ${n}.`,
+    coLostCrew: n => `Spojenie so spoluhráčom ${n} sa prerušilo. Čakám, kým sa vráti.`, coCrewLeft: n => `Spoluhráč ${n} opustil loď.`,
+    coWaitSec: n => `Ešte ${n} s`, coAlone: 'Pokračovať sám', coEnd: 'Ukončiť hru', coBackCrew: n => `${n} je späť na palube`,
+    coEndTitle: 'Koniec misie', coLostCapt: 'Spojenie s kapitánom sa stratilo.', coCaptLeft: 'Kapitán ukončil hru.',
+    coAgain: 'Znova s posádkou', coSeaWait: 'Kapitán rozhoduje o ďalšej plavbe…',
     lastGames: 'Posledných 10 hier', noGames: 'Zatiaľ žiadna odohraná hra. Vyplávaj a tvoje skóre sa tu objaví.',
     copyXml: 'Kopírovať XML', xmlAria: 'História hier ako XML', fileBase: 'morse-historia',
     fTooBig: 'Súbor je príliš veľký. Vyber XML súbor exportovaný z hry Morse.-',
@@ -368,8 +413,9 @@ const L10N = {
     ],
     tempo: {
       slow: { label: 'Výuka', note: 'Vždy len 1 ponorka, strieľa až po 20 s a nezrýchľuje sa. Morzeovka je pri súradniciach počas celej hry.' },
-      normal: { label: 'Normálne', note: 'Ponorky v 1. leveli strieľajú asi po 16 s a s levelmi pritvrdzujú. Morzeovka je pri súradniciach počas celej hry.' },
+      normal: { label: 'Normálne', note: 'Vždy len 1 ponorka, strieľa po 15 s a nezrýchľuje sa. Séria zásahov násobí body. Morzeovka je pri súradniciach počas celej hry.' },
       fast: { label: 'Rýchle', note: 'Krátke pauzy medzi znakmi pre skúsených. Morzeovka pri súradniciach len v 1. leveli.' },
+      coop: { label: 'Co-op', note: 'Dvaja hráči cez internet bránia jednu loď. Až 3 ponorky naraz a rýchly kľúč. Morzeovku pri súradniciach zapneš tlačidlom Nápoveda.' },
     },
   },
   en: {
@@ -388,8 +434,8 @@ const L10N = {
     noRank: 'No rank yet', nextRank: r => `Next: ${r}`, topRank: 'Highest rank',
     promoted: r => `Well done! You have been promoted to ${r}.`, ranksTitle: 'Ranks', rankNeed: n => `from ${n} XP`,
     trainDone: 'You are ready to put to sea in Normal mode. Climb the career ladder in the navy.',
-    trainCapLine: 'From here on, Normal or Fast mode only.',
-    ranksNote: 'Experience (XP) is the points of all your games added together, and a rank is never lost. In Normal and Fast mode a streak of hits in a row multiplies it: the 2nd to 5th hit ×2, from the 6th hit ×3. A miss or a hit on your ship ends the streak. Training takes you up to Lieutenant (O-3); higher ranks need Normal or Fast mode.',
+    trainCapLine: 'From here on, Normal or Co-op mode only.',
+    ranksNote: 'Experience (XP) is the points of all your games added together, and a rank is never lost. In Normal and Co-op mode a streak of hits in a row multiplies it: the 2nd to 5th hit ×2, from the 6th hit ×3. A miss or a hit on your ship ends the streak. Training takes you up to Lieutenant (O-3); higher ranks need Normal or Co-op mode.',
     dockSave: 'Save to dock', dockOverwrite: 'A game is already docked. Saving replaces it.',
     dockTitle: 'Dock', dockLead: 'Your saved ship is docked:', dockSavedAt: d => `saved ${d}`,
     dockRepair: n => `You can repair the ship in the dock: +1 life for ${n} points of your score (up to 3 lives).`,
@@ -411,10 +457,28 @@ const L10N = {
       'Every minute the ship moves on by one letter: ABC, BCD … up to XYZ. The Atlantic has 24 levels, then you can defend the Mediterranean and the Black Sea.',
       'In the Black Sea, enemy jammers shuffle the column letters after every move of the ship.',
       'The ABC-.. button starts Training at any letter of the Atlantic.',
-      'Points from all your games add up to experience (XP), which earns you U.S. Navy ranks from Ensign to Admiral. In Normal and Fast mode a streak of hits in a row multiplies it: the 2nd to 5th hit ×2, from the 6th ×3; a miss or a hit on your ship ends the streak. Training takes you up to Lieutenant; higher ranks need Normal or Fast. Tap the badge on the start screen to see them all.',
+      'Co-op: two players defend one ship over the internet. The captain creates a room and shows the code or QR; a friend joins as the crew. The captain fires from the bow, the crew from the stern; lives are shared, points and XP are your own.',
+      'Points from all your games add up to experience (XP), which earns you U.S. Navy ranks from Ensign to Admiral. In Normal and Co-op mode a streak of hits in a row multiplies it: the 2nd to 5th hit ×2, from the 6th ×3; a miss or a hit on your ship ends the streak. Training takes you up to Lieutenant; higher ranks need Normal or Co-op. Tap the badge on the start screen to see them all.',
       'From the pause screen you can save the game to the dock; one game can be saved. When leaving the dock you can repair the ship: +1 life for 500 points, up to 3 lives.',
     ],
     spaceHint: 'On a computer, the space bar works as the key too.', back: 'Back',
+    welcomeTitle: 'Welcome aboard', welcomeLead: 'Introduce yourself to the crew and name your ship. You’ll see the ship’s name in the high scores.',
+    profileTitle: 'Player and ship', profileLead: 'Your name and the ship’s name stay on this device only.',
+    nameLabel: 'Player name', shipLabel: 'Ship name', defaultName: 'Sailor', aboard: 'Come aboard', save: 'Save',
+    profileAria: (n, l) => `Player ${n}, ship ${l}. Edit`,
+    coTitle: 'Co-op', coLead: 'Defend one ship together. The captain creates a room and invites a friend, who comes aboard as the crew.',
+    coCreate: 'Create a room (captain)', coJoin: 'Join (crew)', coConnecting: 'Connecting…',
+    coNoNet: 'Couldn’t connect. Check your internet. Co-op doesn’t work in the claude.ai preview; play it on the web (GitHub or itch.io).',
+    coRoom: 'Room code', coScan: 'Your friend scans the QR code with the camera, or picks Co-op → Join in the game and types the code.',
+    coWaitCrew: 'Waiting for the crew…', coCrewIn: n => `Aboard: ${n}. You can set sail.`, coSail: 'Set sail together',
+    coCode: 'Room code', coJoinGo: 'Join', coNoRoom: 'There’s no room with this code.', coFull: 'This ship already has a crew.',
+    coOwn: 'That’s your own room.', coStarted: 'This game is already under way.',
+    coJoined: (n, l) => `You’re aboard the ${l}. Captain: ${n}.`, coWaitCapt: 'Waiting for the captain…',
+    coCaptain: 'Captain', coCrew: 'Crew', coLate: c => `${c} is already sunk`, coPausedBy: n => `Paused by ${n}.`,
+    coLostCrew: n => `Lost the connection to ${n}. Waiting for them to come back.`, coCrewLeft: n => `${n} left the ship.`,
+    coWaitSec: n => `${n} s left`, coAlone: 'Carry on alone', coEnd: 'End the game', coBackCrew: n => `${n} is back aboard`,
+    coEndTitle: 'Mission over', coLostCapt: 'Lost the connection to the captain.', coCaptLeft: 'The captain ended the game.',
+    coAgain: 'Again with the crew', coSeaWait: 'The captain decides where to sail next…',
     lastGames: 'Last 10 games', noGames: 'No games played yet. Set sail and your score will show up here.',
     copyXml: 'Copy XML', xmlAria: 'Game history as XML', fileBase: 'morse-history',
     fTooBig: 'The file is too large. Choose an XML file exported from Morse.-',
@@ -438,8 +502,9 @@ const L10N = {
     ],
     tempo: {
       slow: { label: 'Training', note: 'Always just 1 submarine; it fires only after 20 s and never speeds up. Morse code sits by the coordinates all game.' },
-      normal: { label: 'Normal', note: 'Submarines in level 1 fire after about 16 s and get tougher every level. Morse code sits by the coordinates all game.' },
+      normal: { label: 'Normal', note: 'Always just 1 submarine; it fires after 15 s and never speeds up. A streak of hits multiplies your points. Morse code sits by the coordinates all game.' },
       fast: { label: 'Fast', note: 'Short pauses between characters, for experienced players. Morse code by the coordinates in level 1 only.' },
+      coop: { label: 'Co-op', note: 'Two players defend one ship over the internet. Up to 3 submarines at once and a fast key. The Hints button turns the Morse code by the coordinates on.' },
     },
   },
 };
@@ -479,8 +544,10 @@ const colLetter = li => sectorOf(S.level)[li - (S.level - 1)];
 const TEMPO = {
   slow:   { dot: 260, gap: 1000 },
   normal: { dot: 200, gap: 700 },
-  fast:   { dot: 150, gap: 450 },
+  fast:   { dot: 150, gap: 450 },   // the former Fast mode: kept for old saves and history only
+  coop:   { dot: 150, gap: 450 },
 };
+const MENU_MODES = ['slow', 'normal', 'coop'];
 Object.keys(TEMPO).forEach(k => ['label', 'note'].forEach(f => Object.defineProperty(TEMPO[k], f, { get: () => L10N[lang].tempo[k][f] })));
 const pretty = code => code.replace(/\./g, '·').replace(/-/g, '–');
 // The notch is an inline box, which would let a line break inside the word: keep such words whole.
@@ -500,7 +567,7 @@ const S = {
   subs: [], fx: [], ring: null, transition: null, jam: {},
   radarT: 1, spawnT: 0.8, shake: 0, shipFlash: 0, nextId: 1,
   best: store.get('best', 0),
-  tempo: TEMPO[store.get('tempo', 'normal')] ? store.get('tempo', 'normal') : 'normal',
+  tempo: MENU_MODES.includes(store.get('tempo', 'normal')) ? store.get('tempo', 'normal') : 'normal',
   sound: store.get('sound', true),
   help: store.get('help', true),
   resume: null,
@@ -795,16 +862,18 @@ function cellCenter(li, row) {
 }
 
 /* ---------- difficulty ---------- */
-// The slow tempo is the training mode: level 1 difficulty all the way from ABC to XYZ.
-// Normal / fast tighten until about level 10, then hold: at most 3 submarines, ≥ 12 s to fire, a new one
-// every ≥ 4 s. Simulated over all 76 levels, a player who fires every 4–5 s loses no lives and one at
-// 6 s per shot loses about a dozen, so every sea stays passable.
+// Training (slow tempo) and Normal keep one submarine on the grid at a time and never speed up: a new one
+// comes some 5-6 s after the last, and it fires after 20 s in Training, 15 s in Normal, in every level.
+// Fast tightens until about level 10, then holds: at most 3 submarines, >= 12 s to fire, a new one every
+// >= 4 s. Simulated over all 76 levels, a player who fires every 4-5 s loses no lives and one at 6 s per
+// shot loses about a dozen, so every sea stays passable.
 const learning = () => S.tempo === 'slow';
-const maxSubs = lv => (learning() ? 1 : Math.min(3, 1 + Math.floor((lv + 1) / 6)));
-const fuseFor = lv => (learning()
-  ? 20 + Math.random()
+const oneAtATime = () => S.tempo === 'slow' || S.tempo === 'normal';   // Co-op plays like the former Fast mode
+const maxSubs = lv => (oneAtATime() ? 1 : Math.min(3, 1 + Math.floor((lv + 1) / 6)));
+const fuseFor = lv => (learning() ? 20 + Math.random()
+  : oneAtATime() ? 15 + Math.random()
   : Math.max(12, 15.5 - 0.4 * (lv - 1)) + Math.random() * 2);
-const spawnGap = lv => (learning() ? 4.85 : Math.max(4, 5 - lv * 0.15)) + Math.random() * 1.5;
+const spawnGap = lv => (oneAtATime() ? 4.85 : Math.max(4, 5 - lv * 0.15)) + Math.random() * 1.5;
 
 /* ---------- game flow ---------- */
 function startGame(level = 1, score = 0) {
@@ -822,6 +891,7 @@ function startGame(level = 1, score = 0) {
 }
 
 function update(dt) {
+  if (isCrew()) { crewUpdate(dt); return; }
   S.levelTime += dt;
   if (S.levelTime >= LEVEL_TIME) { startTransition(); return; }
 
@@ -854,8 +924,12 @@ function spawnSub() {
 }
 
 function radarPing() {
-  S.ring = { t0: anim };
+  sweep();
   sfx.ping();
+  emit('ping');
+}
+function sweep() {
+  S.ring = { t0: anim };
   const speed = G.maxR / RING_TIME;
   for (const s of S.subs) {
     const p = cellCenter(s.li, s.row);
@@ -864,18 +938,23 @@ function radarPing() {
 }
 
 function launchTorpedo(sub) {
-  const from = cellCenter(sub.li, sub.row);
+  torpedoFx(sub.li, sub.row, torpedoHit);
+  emit('torp', { li: sub.li, row: sub.row });
+}
+function torpedoFx(li, row, onDone) {
+  const from = cellCenter(li, row);
   const tx = Math.min(Math.max(from.x, G.shipX - G.PS * 15), G.shipX + G.PS * 15);
   const ty = G.shipCY + (from.y < G.shipCY ? -G.PS * 2 : G.PS * 3);
-  S.fx.push({ type: 'torpedo', x0: from.x, y0: from.y, x1: tx, y1: ty, t: 0, dur: 1.0, onDone: torpedoHit });
+  S.fx.push({ type: 'torpedo', x0: from.x, y0: from.y, x1: tx, y1: ty, t: 0, dur: 1.0, onDone });
   sfx.launch();
-  toast(tr('tTorpedo', spoken(colLetter(sub.li), DIGITS[sub.row])), 'bad');
+  toast(tr('tTorpedo', spoken(colLetter(li), DIGITS[row])), 'bad');
 }
 
 function torpedoHit() {
   if (S.mode !== 'play' && S.mode !== 'transition') return;
   S.lives--;
   S.streak = 0;
+  if (isCaptain()) CO.gStreak = 0;   // one ship: a torpedo ends both streaks
   S.hitThisLevel = true;
   S.shake = reduceMotion ? 0 : 1;
   S.shipFlash = 0.5;
@@ -883,10 +962,13 @@ function torpedoHit() {
   sfx.hit();
   toast(tr('tShipHit'), 'bad');
   updateHUD();
+  publishState(true);
   if (S.lives <= 0) gameOver();
 }
 
 function fire(letter, digit) {
+  if (isCrew()) { crewFire(letter, digit); return; }
+  if (isCaptain()) { captainShot(letter, digit); return; }
   const col = sectorOf(S.level).indexOf(letter);
   const row = DIGITS.indexOf(digit);
   const coord = spoken(letter, digit);
@@ -933,12 +1015,14 @@ function startTransition() {
     S.score += 250;
     floatText(G.shipX, G.shipY - G.PS * 4, tr('bonus'), C.sonar);
     addXP(250);
+    if (isCaptain() && !CO.alone) { CO.gScore += 250; emit('bonus', { pts: 250 }); }
   }
   saveBest(); updateHUD();
   if (S.level === seaOf(S.level).last) {
     S.mode = 'won';
     sfx.level();
-    setTimeout(showSeaEnd, 1100);
+    publishState(true);
+    setTimeout(isCaptain() ? coopSeaEnd : showSeaEnd, 1100);
     return;
   }
   beginShift();
@@ -965,6 +1049,7 @@ function updateTransition(dt) {
 }
 
 function gameOver() {
+  if (isCaptain()) { captainEnd('sunk'); return; }
   S.mode = 'over';
   S.transition = null;
   clearInput(true);
@@ -1102,6 +1187,8 @@ function historyXml(list) {
     if (TEMPO[r.tempo]) extra.push(`    <rezim>${esc(TEMPO[r.tempo].label)}</rezim>`);
     if (SEAS[r.sea]) extra.push(`    <more>${esc(SEAS[r.sea].name)}</more>`);
     if (r.level) extra.push(`    <level>${r.level}</level>`);
+    if (r.ship) extra.push(`    <lod>${esc(r.ship)}</lod>`);
+    if (r.partner) extra.push(`    <spoluhrac>${esc(r.partner)}</spoluhrac>`);
     return ['  <hra>',
       `    <datum>${localIso(r.t)}</datum>`,
       `    <dovod>${esc(RESULTS[r.result] || r.result)}</dovod>`,
@@ -1109,7 +1196,8 @@ function historyXml(list) {
       ...extra,
       '  </hra>'].join('\n');
   });
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<historia hra="Morse.-" verzia="1">\n${games.join('\n')}\n</historia>\n`;
+  const who = `  <hrac>\n    <meno>${esc(playerName())}</meno>\n    <lod>${esc(shipName())}</lod>\n  </hrac>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<historia hra="Morse.-" verzia="1">\n${[who, ...games].join('\n')}\n</historia>\n`;
 }
 function parseHistoryXml(text) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
@@ -1129,6 +1217,10 @@ function parseHistoryXml(text) {
     if (tempo) run.tempo = tempo;
     if (sea >= 0) run.sea = sea;
     if (level > 0) run.level = Math.min(level, 99);
+    const ship = cleanText(get('lod'), SHIP_MAX);
+    if (ship) run.ship = ship;
+    const partner = cleanText(get('spoluhrac'), NAME_MAX);
+    if (partner) run.partner = partner;
     runs.push(run);
   }
   return runs;
@@ -1150,7 +1242,11 @@ function recordGame(result) {
   if (!S.inGame || S.recorded) return;
   S.recorded = true;
   saveBest();
-  const run = { t: Date.now(), tempo: S.tempo, sea: SEAS.indexOf(seaOf(S.level)), level: levelInSea(S.level), score: S.score, result };
+  const run = { t: Date.now(), tempo: S.tempo, sea: SEAS.indexOf(seaOf(S.level)), level: levelInSea(S.level), score: S.score, result, ship: shipName() };
+  if (coop()) {   // a Co-op game sails on the captain's ship, with the partner's name
+    if (CO.role === 'g' && CO.peer && CO.peer.ship) run.ship = CO.peer.ship;
+    if (CO.peer) run.partner = CO.peer.name;
+  }
   store.set('history', [run, ...history()].slice(0, 10));
 }
 
@@ -1161,12 +1257,14 @@ function pause() {
   keyRelease(true);
   clearInput(false);
   showPause();
+  if (coop() && !CO.remotePause) CO.ref.child('pause').set({ by: CO.role }).catch(() => {});
 }
 function resume() {
   if (S.mode !== 'paused') return;
   initAudio();
   S.mode = S.pausedFrom || 'play';
   hideOverlay();
+  if (coop() && !CO.remotePause) CO.ref.child('pause').set(null).catch(() => {});
 }
 
 /* ---------- effects ---------- */
@@ -1269,7 +1367,7 @@ function drawGrid() {
   const { x0, cellW, cellH, headH, y0, shipY, yBottom, gridW } = G;
   const b = base(), sh = shift();
   // Labels carry their morse code throughout, except in the fast tempo where only level 1 has it (fading out as the ship leaves it).
-  const ma = S.tempo !== 'fast' ? 1 : S.level === 1 ? 1 - sh : 0;
+  const ma = S.tempo === 'coop' ? (S.help ? 1 : 0) : S.tempo !== 'fast' ? 1 : S.level === 1 ? 1 - sh : 0;
   ctx.fillStyle = C.abyss;
   ctx.globalAlpha = 0.6; ctx.fillRect(0, 0, W, headH);
   ctx.globalAlpha = 0.35; ctx.fillRect(0, headH, x0, H - headH);
@@ -1283,6 +1381,11 @@ function drawGrid() {
     const ch = k < 3 ? sectorOf(S.level)[k] : sectorOf(S.level + 1)[2];
     const x = x0 + (k - sh) * cellW;
     const sel = I.letter === ch;
+    if (!sel && coop() && CO.peerLetter === ch) {   // the column the partner is aiming at
+      ctx.fillStyle = C.amber; ctx.globalAlpha = 0.07;
+      ctx.fillRect(x, headH, cellW, H - headH);
+      ctx.globalAlpha = 1;
+    }
     if (sel) {
       ctx.fillStyle = C.sonar; ctx.globalAlpha = 0.09;
       ctx.fillRect(x, headH, cellW, H - headH);
@@ -1467,7 +1570,7 @@ function drawFx() {
     } else if (f.type === 'mark') {
       const c = cellCenter(f.li, f.row);
       if (Math.floor(f.t * 10) % 2 === 0) {
-        brackets(Math.round(c.x - G.cellW / 2 + 2) + 0.5, Math.round(c.y - G.cellH / 2 + 2) + 0.5, Math.round(G.cellW - 4), Math.round(G.cellH - 4), C.amber, Math.max(6, G.cellH * 0.3));
+        brackets(Math.round(c.x - G.cellW / 2 + 2) + 0.5, Math.round(c.y - G.cellH / 2 + 2) + 0.5, Math.round(G.cellW - 4), Math.round(G.cellH - 4), f.color || C.amber, Math.max(6, G.cellH * 0.3));
       }
       // "FIRE ALPHA7" tag on the targeted square: above it, or below it on the top row next to the letters
       if (f.label) {
@@ -1479,9 +1582,9 @@ function drawFx() {
         ctx.globalAlpha = f.t > f.dur - 0.3 ? Math.max(0, (f.dur - f.t) / 0.3) : 1;
         ctx.fillStyle = C.abyss;
         ctx.fillRect(Math.round(bx), Math.round(by), Math.round(bw), Math.round(bh));
-        ctx.strokeStyle = C.amber; ctx.lineWidth = 1;
+        ctx.strokeStyle = f.color || C.amber; ctx.lineWidth = 1;
         ctx.strokeRect(Math.round(bx) + 0.5, Math.round(by) + 0.5, Math.round(bw) - 1, Math.round(bh) - 1);
-        ctx.fillStyle = C.amber;
+        ctx.fillStyle = f.color || C.amber;
         pixelLabel(f.label, bx + bw / 2, by + bh / 2 + 1, tw, fs);
         ctx.globalAlpha = 1;
       }
@@ -1531,6 +1634,7 @@ function updateHUD() {
   for (let i = 0; i < MAX_LIVES; i++) h += `<span class="${i < S.lives ? '' : 'lost'}">${HEART}</span>`;
   $('hudLives').innerHTML = h;
   $('hudLives').setAttribute('aria-label', tr('lives', S.lives, MAX_LIVES));
+  renderPeer();
 }
 const timeFill = $('timeFill');
 function updateTimer() {
@@ -1627,6 +1731,7 @@ function clearInput(full) {
 }
 
 function renderInput() {
+  sendTyping();
   const sL = $('slotL'), sD = $('slotD');
   const showLast = !I.letter && !I.buf && I.last;
   const ltr = I.letter || (showLast ? I.last[0] : '');
@@ -1724,14 +1829,63 @@ function showOverlay(html, focusSel, kind) {
 }
 function hideOverlay() { overlay.hidden = true; card.innerHTML = ''; }
 
-function showMenu() {
-  S.mode = 'menu';
-  const seg = Object.entries(TEMPO).map(([k, t]) =>
-    `<button class="pixel-btn" data-tempo="${k}" aria-pressed="${S.tempo === k}">${t.label}</button>`).join('');
+// The player's name and ship, asked for once at the first start and editable from the start screen.
+// The ship's name goes with every game into the high scores; the name is for Co-op.
+const NAME_MAX = 12, SHIP_MAX = 16;
+const cleanText = (v, max) => String(v || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
+function loadProfile() {
+  const p = store.get('profile', null);
+  return p && typeof p === 'object' ? { name: cleanText(p.name, NAME_MAX), ship: cleanText(p.ship, SHIP_MAX) } : null;
+}
+const playerName = () => (loadProfile() || {}).name || tr('defaultName');
+const shipName = () => (loadProfile() || {}).ship || 'Morse.-';
+
+function showProfile(first) {
+  const p = loadProfile() || { name: '', ship: '' };
   const langs = LANGS.map(l =>
     `<button class="pixel-btn" data-lang="${l}" aria-pressed="${lang === l}" lang="${l}">${l.toUpperCase()}</button>`).join('');
   showOverlay(`
-    <div class="lang-seg" role="group" aria-label="Jazyk / Language">${langs}</div>
+    ${first ? `<div class="lang-seg" role="group" aria-label="Jazyk / Language">${langs}</div>` : ''}
+    <h2>${tr(first ? 'welcomeTitle' : 'profileTitle')}</h2>
+    <p>${tr(first ? 'welcomeLead' : 'profileLead')}</p>
+    <form id="profileForm" class="card-form" style="display:flex;flex-direction:column;gap:14px" novalidate>
+      <label class="field-row"><span class="seg-label">${tr('nameLabel')}</span>
+        <input class="text-in" id="pName" maxlength="${NAME_MAX}" autocomplete="nickname" autocapitalize="words" spellcheck="false" enterkeyhint="next" placeholder="${esc(tr('defaultName'))}" value="${esc(p.name)}"></label>
+      <label class="field-row"><span class="seg-label">${tr('shipLabel')}</span>
+        <input class="text-in" id="pShip" maxlength="${SHIP_MAX}" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Morse.-" value="${esc(p.ship)}"></label>
+      <button class="cta" type="submit" id="pSave">${tr(first ? 'aboard' : 'save')}</button>
+    </form>
+    ${first ? '' : `<button class="cta alt" id="goBack">${tr('back')}</button>`}
+  `, first ? '#pName' : '#pSave');
+  card.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => {
+    if (lang === b.dataset.lang) return;
+    const typed = { name: $('pName').value, ship: $('pShip').value };
+    lang = b.dataset.lang; store.set('lang', lang); applyLang();
+    showProfile(first);
+    $('pName').value = typed.name; $('pShip').value = typed.ship;
+  }));
+  $('pName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('pShip').focus(); } });
+  $('profileForm').addEventListener('submit', e => {
+    e.preventDefault();
+    store.set('profile', { name: cleanText($('pName').value, NAME_MAX), ship: cleanText($('pShip').value, SHIP_MAX) });
+    showMenu();
+  });
+  if (!first) $('goBack').addEventListener('click', showMenu);
+}
+
+function showMenu() {
+  if (!loadProfile()) { showProfile(true); return; }
+  S.mode = 'menu';
+  if (!MENU_MODES.includes(S.tempo)) S.tempo = 'normal';
+  const seg = MENU_MODES.map(k =>
+    `<button class="pixel-btn" data-tempo="${k}" aria-pressed="${S.tempo === k}">${TEMPO[k].label}</button>`).join('');
+  const langs = LANGS.map(l =>
+    `<button class="pixel-btn" data-lang="${l}" aria-pressed="${lang === l}" lang="${l}">${l.toUpperCase()}</button>`).join('');
+  showOverlay(`
+    <div class="menu-top">
+      <button class="profile-chip" id="goProfile" aria-label="${esc(tr('profileAria', playerName(), shipName()))}">${esc(playerName())} · ${esc(shipName())}</button>
+      <div class="lang-seg" role="group" aria-label="Jazyk / Language">${langs}</div>
+    </div>
     <div class="menu-hero">
       <canvas class="hero big" aria-hidden="true"></canvas>
       <h1 aria-label="Morse.-">M<i class="mnotch" aria-hidden="true"></i>orse<i class="tm dot" aria-hidden="true"></i><i class="tm dash" aria-hidden="true"></i></h1>
@@ -1774,12 +1928,14 @@ function showMenu() {
     $('tempoNote').textContent = TEMPO[S.tempo].note;
   }));
   $('goPick').addEventListener('click', showPicker);
+  $('goProfile').addEventListener('click', () => showProfile(false));
   $('goRanks').addEventListener('click', showRanks);
   paintAllInsignia(card);
-  $('goStart').addEventListener('click', () => { const d = loadDock(); if (d) showDock(d); else startGame(1, 0); });
+  $('goStart').addEventListener('click', () => { if (S.tempo === 'coop') { showCoop(); return; } const d = loadDock(); if (d) showDock(d); else startGame(1, 0); });
   $('goScores').addEventListener('click', () => showScores());
   $('goGuide').addEventListener('click', showGuide);
   if (S.resume) $('goResume').addEventListener('click', () => startGame(S.resume.level, S.resume.score));
+  if (ROOM_FROM_URL && !roomLinkUsed) { roomLinkUsed = true; S.tempo = 'coop'; store.set('tempo', 'coop'); showJoin(ROOM_FROM_URL); }
 }
 
 const fmtPts = n => n.toLocaleString(lang === 'sk' ? 'sk-SK' : 'en-US');
@@ -1837,7 +1993,8 @@ function showScores(message) {
   const rows = list.map(r => {
     const d = new Date(r.t);
     const meta = [];
-    if (TEMPO[r.tempo]) meta.push(TEMPO[r.tempo].label);
+    if (r.ship) meta.push(r.ship);
+    if (TEMPO[r.tempo]) meta.push(TEMPO[r.tempo].label + (r.partner ? ' · ' + r.partner : ''));
     if (SEAS[r.sea]) meta.push(SEAS[r.sea].name + (r.level ? `, level ${r.level}` : ''));
     meta.push(RESULTS[r.result] || r.result || '');
     return `<li class="${r.score > 0 && r.score === best ? 'top' : ''}">
@@ -1932,6 +2089,21 @@ async function exportHistory(list) {
 }
 
 function showPause() {
+  if (coop()) {
+    showOverlay(`
+      <h2>${tr('paused')}</h2>
+      <p>${tr('pauseLine', seaOf(S.level).name, levelInSea(S.level), sectorOf(S.level).join(' · '), S.score)}</p>
+      <p class="co-who" id="coPauseBy"></p>
+      <button class="cta" id="goOn">${tr('cont')}</button>
+      <button class="cta alt" id="goMenu">${tr('backMenu')}</button>
+    `);
+    $('goOn').addEventListener('click', resume);
+    $('goMenu').addEventListener('click', () => {
+      if (CO.role === 'h') { captainEnd('home'); return; }
+      recordGame('home'); coopLeave(); toMenu();
+    });
+    return;
+  }
   const docked = loadDock();
   showOverlay(`
     <h2>${tr('paused')}</h2>
@@ -2068,6 +2240,563 @@ function showSeaEnd() {
   $('goMenu').addEventListener('click', toMenu);
 }
 
+/* ---------- co-op: two players, one ship, over the internet ---------- */
+// The captain (host) creates a room with a 4-character code (also shown as a QR link) and runs the game:
+// submarines, timers, torpedoes and every hit are decided on the captain's device. The crew (guest) joins
+// with the code, sees the captain's sea through state snapshots and sends its shots; the captain resolves
+// them. Both share the ship's lives and the course; each keeps their own score, streak and XP.
+// Firebase Realtime Database relays it all: rooms/<CODE> = { host, guest, phase, state, ev, cmd, typing, pause, on }.
+const FB_CONFIG = {
+  apiKey: 'AIzaSyA9AcxwPNos9m_E9eUb36niaPUm9BHSeJ4',
+  authDomain: 'morsea-game.firebaseapp.com',
+  databaseURL: 'https://morsea-game-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'morsea-game',
+  storageBucket: 'morsea-game.firebasestorage.app',
+  messagingSenderId: '576827382342',
+  appId: '1:576827382342:web:d8c3bb3960aad9ae258847',
+};
+const FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const QR_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O or 1/I to mix up
+const CREW_WAIT = 30;            // seconds the captain waits for a crew that lost its connection
+const CAPTAIN_GRACE = 8;         // seconds the crew waits before it gives up on a silent captain
+
+const CO = {
+  on: false, role: null, code: '', db: null, uid: null, ref: null, subs: [],
+  peer: null, peerOnline: false, peerLetter: '', peerScore: 0,
+  gScore: 0, gStreak: 0, sunk: new Map(), lastSnap: 0, lastTyping: null,
+  alone: false, waitTimer: null, lostTimer: null, ended: false, remotePause: false,
+};
+const coop = () => CO.on && S.tempo === 'coop';
+const isCrew = () => coop() && CO.role === 'g';
+const isCaptain = () => coop() && CO.role === 'h';
+const multOf = n => (n >= 6 ? 3 : n >= 2 ? 2 : 1);
+const peerName = () => (CO.peer && CO.peer.name) || tr(CO.role === 'h' ? 'coCrew' : 'coCaptain');
+
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    if ([...document.scripts].some(s => s.src === src)) { ok(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.onload = () => ok(); s.onerror = () => fail(new Error('load ' + src));
+    document.head.appendChild(s);
+  });
+}
+async function coopNet() {
+  if (CO.db) return;
+  for (const f of ['firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-database-compat.js']) await loadScript(FB_SDK + f);
+  const fb = window.firebase;
+  if (!fb.apps.length) fb.initializeApp(FB_CONFIG);
+  const cred = await fb.auth().signInAnonymously();
+  CO.uid = cred.user.uid;
+  CO.db = fb.database();
+}
+const roomRef = code => CO.db.ref('rooms/' + code);
+function listen(ref, ev, fn) { ref.on(ev, fn); CO.subs.push(() => ref.off(ev, fn)); }
+function coopReset() {
+  CO.subs.forEach(off => { try { off(); } catch (e) {} });
+  CO.subs = [];
+  clearInterval(CO.waitTimer); clearTimeout(CO.lostTimer);
+  Object.assign(CO, { on: false, role: null, code: '', ref: null, peer: null, peerOnline: false, peerLetter: '', peerScore: 0,
+    gScore: 0, gStreak: 0, lastTyping: null, alone: false, waitTimer: null, lostTimer: null, ended: false, remotePause: false });
+  CO.sunk.clear();
+  renderPeer();
+}
+// Leaves the room for good: the captain deletes it, the crew steps off the ship.
+function coopLeave() {
+  const ref = CO.ref, role = CO.role;
+  coopReset();
+  if (!ref) return;
+  try { (role === 'h' ? ref.remove() : ref.child('guest').remove()).catch(() => {}); ref.child('on/' + role).remove().catch(() => {}); } catch (e) {}
+}
+// Presence: my flag is on while I'm connected and disappears by itself when I drop.
+function coopPresence() {
+  const me = CO.ref.child('on/' + CO.role);
+  listen(CO.db.ref('.info/connected'), 'value', s => {
+    if (s.val() !== true) return;
+    me.onDisconnect().remove().then(() => me.set(true)).catch(() => {});
+  });
+}
+function emit(type, data) {
+  if (!isCaptain() || !CO.peerOnline) return;
+  CO.ref.child('ev').push(Object.assign({ type }, data || {})).catch(() => {});
+}
+
+/* --- screens: choose, create, join --- */
+function showCoop(msg) {
+  showOverlay(`
+    <h2>${tr('coTitle')}</h2>
+    <p>${tr('coLead')}</p>
+    <button class="cta" id="coCreate">${tr('coCreate')}</button>
+    <button class="cta alt" id="coJoin">${tr('coJoin')}</button>
+    <p class="hist-status" id="coStatus" role="status">${msg ? esc(msg) : ''}</p>
+    <button class="cta alt" id="goBack">${tr('back')}</button>
+  `);
+  $('coCreate').addEventListener('click', coopCreate);
+  $('coJoin').addEventListener('click', () => showJoin(''));
+  $('goBack').addEventListener('click', () => { coopLeave(); showMenu(); });
+}
+async function coopConnect(status) {
+  if (status) status.textContent = tr('coConnecting');
+  try { await coopNet(); return true; } catch (e) {
+    if (status) status.textContent = tr('coNoNet');
+    return false;
+  }
+}
+async function coopCreate() {
+  if (!(await coopConnect($('coStatus')))) return;
+  let code = '', ref = null;
+  for (let i = 0; i < 6 && !ref; i++) {
+    code = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
+    const r = roomRef(code);
+    try {
+      const res = await r.transaction(cur => (cur === null
+        ? { v: 1, t: Date.now(), phase: 'lobby', host: { uid: CO.uid, name: playerName(), ship: shipName() } }
+        : undefined));
+      if (res.committed) ref = r;
+    } catch (e) { break; }
+  }
+  if (!ref) { const st = $('coStatus'); if (st) st.textContent = tr('coNoNet'); return; }
+  coopReset();
+  Object.assign(CO, { on: true, role: 'h', code, ref });
+  coopPresence();
+  listen(ref.child('guest'), 'value', s => {
+    const g = s.val();
+    const had = !!CO.peer;
+    CO.peer = g ? { name: cleanText(g.name, NAME_MAX) || tr('coCrew') } : null;
+    if (S.mode === 'menu') { renderLobby(); return; }
+    if (had && !g && S.inGame && S.mode !== 'over') crewGone(true);
+  });
+  listen(ref.child('on/g'), 'value', s => {
+    const was = CO.peerOnline;
+    CO.peerOnline = s.val() === true;
+    if (S.mode === 'menu') { renderLobby(); return; }
+    if (!S.inGame || S.mode === 'over') return;
+    if (was && !CO.peerOnline) crewGone(false);
+    else if (!was && CO.peerOnline && CO.waitTimer) crewBack();
+  });
+  listen(ref.child('cmd'), 'child_added', s => {
+    const c = s.val();
+    s.ref.remove().catch(() => {});
+    if (c && c.type === 'fire' && S.mode === 'play') crewShot(c.l, c.d);
+  });
+  listen(ref.child('typing/g'), 'value', s => { CO.peerLetter = s.val() || ''; renderPeer(); });
+  listen(ref.child('pause'), 'value', s => remotePause(s.val()));
+  showLobby();
+}
+const roomLink = () => location.origin + location.pathname + '?room=' + CO.code;
+function showLobby() {
+  showOverlay(`
+    <h2>${tr('coTitle')}</h2>
+    <div class="seg-label">${tr('coRoom')}</div>
+    <p class="co-code">${CO.code.split('').map(c => mHtml(c)).join(' ')}</p>
+    <canvas class="co-qr" id="coQr" aria-label="QR: ${esc(roomLink())}"></canvas>
+    <p class="foot">${tr('coScan')}</p>
+    <p class="co-who" id="coWho" role="status"></p>
+    <button class="cta" id="coGo" disabled>${tr('coSail')}</button>
+    <button class="cta alt" id="goBack">${tr('back')}</button>
+  `, '#goBack', 'co-lobby');
+  drawQr($('coQr'), roomLink());
+  $('coGo').addEventListener('click', captainStart);
+  $('goBack').addEventListener('click', () => { coopLeave(); showMenu(); });
+  renderLobby();
+}
+function renderLobby() {
+  const who = $('coWho'), go = $('coGo');
+  if (!who || !go) return;
+  const ready = !!CO.peer && CO.peerOnline;
+  who.textContent = ready ? tr('coCrewIn', CO.peer.name) : tr('coWaitCrew');
+  who.classList.toggle('ok', ready);
+  go.disabled = !ready;
+}
+async function drawQr(cvs, text) {
+  try {
+    await loadScript(QR_LIB);
+    const qr = window.qrcode(0, 'M');
+    qr.addData(text); qr.make();
+    const n = qr.getModuleCount(), q = 2, cells = n + q * 2;
+    const css = Math.min(200, Math.floor((card.clientWidth - 40) / cells) * cells);
+    const dpr = window.devicePixelRatio || 1, px = Math.max(1, Math.floor(css * dpr / cells));
+    cvs.width = cvs.height = cells * px;
+    cvs.style.width = cvs.style.height = (cells * px / dpr) + 'px';
+    const c = cvs.getContext('2d');
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, cvs.width, cvs.height);
+    c.fillStyle = '#06111c';
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) c.fillRect((k + q) * px, (r + q) * px, px, px);
+  } catch (e) { cvs.hidden = true; }
+}
+function showJoin(code, msg) {
+  showOverlay(`
+    <h2>${tr('coTitle')}</h2>
+    <form id="coForm" style="display:flex;flex-direction:column;gap:14px" novalidate>
+      <label class="field-row"><span class="seg-label">${tr('coCode')}</span>
+        <input class="text-in co-in" id="coCodeIn" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" value="${esc(code)}"></label>
+      <button class="cta" type="submit">${tr('coJoinGo')}</button>
+    </form>
+    <p class="hist-status" id="coStatus" role="status">${msg ? esc(msg) : ''}</p>
+    <button class="cta alt" id="goBack">${tr('back')}</button>
+  `, '#coCodeIn');
+  const inp = $('coCodeIn');
+  inp.addEventListener('input', () => { inp.value = inp.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+  $('coForm').addEventListener('submit', e => { e.preventDefault(); coopJoin(inp.value); });
+  $('goBack').addEventListener('click', () => { coopLeave(); showCoop(); });
+  if (code.length === 4 && !msg) coopJoin(code);
+}
+async function coopJoin(raw) {
+  const code = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const st = $('coStatus');
+  if (code.length !== 4) { if (st) st.textContent = tr('coNoRoom'); return; }
+  if (!(await coopConnect(st))) return;
+  const ref = roomRef(code);
+  let room;
+  try { room = (await ref.once('value')).val(); } catch (e) { if (st) st.textContent = tr('coNoNet'); return; }
+  const err = !room || !room.host ? 'coNoRoom'
+    : room.host.uid === CO.uid ? 'coOwn'
+    : room.guest && room.guest.uid !== CO.uid ? 'coFull'
+    : room.phase !== 'lobby' && !(room.guest && room.guest.uid === CO.uid) ? 'coStarted' : '';
+  if (err) { if (st) st.textContent = tr(err); return; }
+  try { await ref.child('guest').set({ uid: CO.uid, name: playerName() }); } catch (e) { if (st) st.textContent = tr('coNoNet'); return; }
+  coopReset();
+  Object.assign(CO, { on: true, role: 'g', code, ref, peer: { name: cleanText(room.host.name, NAME_MAX) || tr('coCaptain'), ship: cleanText(room.host.ship, SHIP_MAX) || 'Morse.-' } });
+  coopPresence();
+  listen(ref.child('on/h'), 'value', s => {
+    CO.peerOnline = s.val() === true;
+    clearTimeout(CO.lostTimer);
+    if (!CO.peerOnline && S.inGame && S.mode !== 'over') CO.lostTimer = setTimeout(() => crewEnd('lost'), CAPTAIN_GRACE * 1000);
+  });
+  listen(ref.child('phase'), 'value', s => {
+    const ph = s.val();
+    if (ph === null && !CO.ended) { if (S.inGame && S.mode !== 'over') crewEnd('captLeft'); else { coopReset(); showCoop(tr('coCaptLeft')); } return; }
+    if (ph === 'play' && (!S.inGame || S.mode === 'over')) crewStart();
+  });
+  listen(ref.child('over'), 'value', s => { const o = s.val(); if (o && S.inGame && S.mode !== 'over') crewEnd(o.reason, o); });
+  listen(ref.child('state'), 'value', s => crewApply(s.val()));
+  listen(ref.child('ev'), 'child_added', s => { const e = s.val(); s.ref.remove().catch(() => {}); crewEvent(e); });
+  listen(ref.child('typing/h'), 'value', s => { CO.peerLetter = s.val() || ''; renderPeer(); });
+  listen(ref.child('pause'), 'value', s => remotePause(s.val()));
+  if (room.phase === 'play') crewStart();
+  else showOverlay(`
+    <h2>${tr('coTitle')}</h2>
+    <p>${tr('coJoined', CO.peer.name, CO.peer.ship)}</p>
+    <p class="co-who" role="status">${tr('coWaitCapt')}</p>
+    <button class="cta alt" id="goBack">${tr('back')}</button>
+  `, '#goBack');
+  if ($('goBack')) $('goBack').addEventListener('click', () => { coopLeave(); showMenu(); });
+}
+
+/* --- starting a game --- */
+function captainStart() {
+  if (!CO.peer) return;
+  Object.assign(CO, { gScore: 0, gStreak: 0, alone: false, ended: false, lastSnap: 0 });
+  CO.sunk.clear();
+  S.tempo = 'coop';
+  CO.ref.update({ phase: 'play', over: null, ev: null, cmd: null, pause: null, state: null }).catch(() => {});
+  startGame(1, 0);
+  renderPeer();
+  publishState(true);
+}
+function crewStart() {
+  clearTimeout(CO.lostTimer);
+  CO.ended = false;
+  S.tempo = 'coop';
+  startGame(1, 0);
+  S.spawnT = 1e9; S.radarT = 1e9;   // the captain's device sends submarines and sonar sweeps
+  renderPeer();
+}
+
+/* --- captain: state out, crew shots in --- */
+function publishState(force) {
+  if (!isCaptain() || (!CO.peerOnline && !force)) return;
+  const now = performance.now();
+  if (!force && now - CO.lastSnap < 150) return;
+  CO.lastSnap = now;
+  const jam = {};
+  [S.level, S.level + 1].forEach(lv => { if (seaOf(lv) === BLACK_SEA) jam[lv] = sectorOf(lv); });
+  CO.ref.child('state').set({
+    lv: S.level, lt: Math.round(S.levelTime * 100) / 100, lives: S.lives, mode: S.mode,
+    subs: S.subs.map(s => [s.id, s.li, s.row, Math.round(s.age * 100) / 100, Math.round(s.fuse * 100) / 100, s.flip ? 1 : 0]),
+    jam, sc: { h: S.score, g: CO.gScore }, st: { h: S.streak, g: CO.gStreak },
+  }).catch(() => {});
+}
+// One shot from either player, decided on the captain's device. The first shot at a submarine sinks it;
+// a second one at the same square within 3 s finds it already gone and costs nothing.
+function resolveShot(by, letter, digit) {
+  const col = sectorOf(S.level).indexOf(letter), row = DIGITS.indexOf(digit);
+  if (col < 0 || row < 0) return null;
+  const li = base() + col, key = li + ':' + row;
+  const sub = S.subs.find(s => s.li === li && s.row === row);
+  const res = { li, row, coord: spoken(letter, digit), hit: !!sub, pts: 0, mult: 1, late: false };
+  if (sub) {
+    S.subs = S.subs.filter(s => s !== sub);
+    CO.sunk.set(key, anim);
+    const streak = by === 'h' ? ++S.streak : ++CO.gStreak;
+    res.mult = multOf(streak);
+    res.pts = (100 + 10 * S.level + Math.max(0, Math.round((sub.fuse - sub.age) * 10))) * res.mult;
+    if (by === 'g') CO.gScore += res.pts;
+  } else if ((CO.sunk.get(key) ?? -99) > anim - 3) {
+    res.late = true;
+  } else if (by === 'h') S.streak = 0; else CO.gStreak = 0;
+  return res;
+}
+function captainShot(letter, digit) {
+  const res = resolveShot('h', letter, digit);
+  if (!res) { sfx.error(); toast(tr('tRange', spoken(letter, digit)), 'warn'); return; }
+  shotFx('h', res, true, true);
+  emit('shot', Object.assign({ by: 'h' }, res));
+  publishState(true);
+}
+function crewShot(letter, digit) {
+  const res = resolveShot('g', letter, digit);
+  if (!res) return;
+  shotFx('g', res, false, true);
+  emit('shot', Object.assign({ by: 'g' }, res));
+  publishState(true);
+}
+
+/* --- shared effects --- */
+// The captain fires from the bow, the crew from the stern.
+function gunAt(by) {
+  const half = SHIP[0].length * G.PS * 0.36;
+  return { x: G.shipX + (by === 'h' ? half : -half), y: G.shipY + G.PS * 3 };
+}
+function shotFx(by, res, own, shell) {
+  const to = cellCenter(res.li, res.row), gun = gunAt(by);
+  if (shell) {
+    sfx.fire();
+    S.fx.push({ type: 'mark', li: res.li, row: res.row, t: 0, dur: 1.2, color: own ? C.amber : C.sonar,
+      label: own ? tr('fireAt', res.coord) : peerName() + ': ' + tr('fireAt', res.coord) });
+  }
+  S.fx.push({ type: 'shell', x0: gun.x, y0: gun.y, x1: to.x, y1: to.y, t: 0, dur: shell ? 0.4 : 0.01, onDone: () => shotResult(by, res, own) });
+}
+function shotResult(by, res, own) {
+  const to = cellCenter(res.li, res.row);
+  if (res.hit) {
+    boom(to.x, to.y, false); sfx.boom();
+    floatText(to.x, to.y, '+' + res.pts + (res.mult > 1 ? ' ×' + res.mult : ''), own ? C.amber : C.sonar);
+    if (own) {
+      S.score += res.pts;   // on the crew's device the captain's next snapshot confirms it
+      toast(tr('tHit', res.coord));
+      addXP(res.pts);
+    } else toast(peerName() + ': ' + tr('tHit', res.coord));
+  } else if (res.late) {
+    if (own) toast(tr('coLate', res.coord), 'warn');
+  } else {
+    splash(to.x, to.y); sfx.splash();
+    if (own) toast(tr('tMiss', res.coord), 'warn');
+  }
+  updateHUD();
+}
+
+/* --- crew: mirror the captain's sea --- */
+function crewFire(letter, digit) {
+  const col = sectorOf(S.level).indexOf(letter);
+  const coord = spoken(letter, digit);
+  if (col < 0) { sfx.error(); toast(tr('tRange', coord), 'warn'); return; }
+  const li = base() + col, row = DIGITS.indexOf(digit);
+  const to = cellCenter(li, row), gun = gunAt('g');
+  sfx.fire();
+  S.fx.push({ type: 'mark', li, row, t: 0, dur: 1.2, label: tr('fireAt', coord) });
+  S.fx.push({ type: 'shell', x0: gun.x, y0: gun.y, x1: to.x, y1: to.y, t: 0, dur: 0.4 });
+  CO.ref.child('cmd').push({ type: 'fire', l: letter, d: digit }).catch(() => {});
+}
+function crewUpdate(dt) {
+  S.levelTime = Math.min(LEVEL_TIME, S.levelTime + dt);
+  for (const s of S.subs) s.age += dt;
+}
+function crewApply(st) {
+  if (!isCrew() || !st || !S.inGame || S.mode === 'over') return;
+  if (st.jam) for (const k of Object.keys(st.jam)) S.jam[+k] = st.jam[k];
+  if (Number.isFinite(st.lives)) S.lives = st.lives;
+  if (st.sc) { S.score = st.sc.g || 0; CO.peerScore = st.sc.h || 0; }
+  if (st.st) S.streak = st.st.g || 0;
+  if (st.mode === 'transition' && S.mode === 'play' && st.lv === S.level) {
+    S.subs = []; clearInput(true); beginShift();
+  } else if (st.mode === 'transition' && S.mode === 'won') {
+    hideOverlay(); beginShift();
+  } else if (st.mode === 'won' && S.mode === 'play') {
+    S.mode = 'won'; S.subs = []; clearInput(true); sfx.level();
+    setTimeout(() => { if (S.mode === 'won') showOverlay(`<h2>${seaOf(S.level).done}</h2><p class="co-who">${tr('coSeaWait')}</p>`); }, 1100);
+  } else if (st.mode === 'play' && st.lv !== S.level && S.mode !== 'paused') {
+    S.level = st.lv; S.transition = null; S.mode = 'play'; S.levelTime = st.lt || 0;
+    renderCheat();
+  }
+  if (S.mode === 'play' && st.mode === 'play' && st.lv === S.level) {
+    S.levelTime = st.lt || 0;
+    const have = new Map(S.subs.map(s => [s.id, s]));
+    S.subs = (st.subs || []).map(([id, li, row, age, fuse, fl]) => {
+      const o = have.get(id);
+      if (o) { o.age = age; o.fuse = fuse; return o; }
+      return { id, li, row, age, fuse, flip: !!fl, revealAt: -99 };
+    });
+  }
+  updateHUD(); renderPeer();
+}
+function crewEvent(e) {
+  if (!isCrew() || !e || !S.inGame || S.mode === 'over') return;
+  if (e.type === 'ping') { sweep(); sfx.ping(); }
+  else if (e.type === 'torp') {
+    S.subs = S.subs.filter(s => !(s.li === e.li && s.row === e.row));
+    torpedoFx(e.li, e.row, () => shipHitFx());
+  } else if (e.type === 'shot') {
+    const own = e.by === 'g';
+    shotFx(e.by, e, own, !own);
+  } else if (e.type === 'bonus') {
+    floatText(G.shipX, G.shipY - G.PS * 4, tr('bonus'), C.sonar);
+    addXP(e.pts || 0);
+  }
+}
+function shipHitFx() {
+  S.shake = reduceMotion ? 0 : 1;
+  S.shipFlash = 0.5;
+  boom(G.shipX + (Math.random() - 0.5) * G.PS * 20, G.shipCY, true);
+  sfx.hit();
+  toast(tr('tShipHit'), 'bad');
+}
+
+/* --- partner's coordinate and score, shown on the battlefield --- */
+function sendTyping() {
+  if (!coop() || !CO.ref) return;
+  const v = I.letter || '';
+  if (v === CO.lastTyping) return;
+  CO.lastTyping = v;
+  CO.ref.child('typing/' + CO.role).set(v).catch(() => {});
+}
+function renderPeer() {
+  const el = $('peerTag');
+  if (!el) return;
+  const show = coop() && S.inGame && !!CO.peer;
+  el.hidden = !show;
+  if (!show) return;
+  el.innerHTML = `${mHtml(esc(peerName()))} <b>${CO.role === 'h' ? CO.gScore : CO.peerScore}</b> · ${CO.peerLetter ? mHtml(CO.peerLetter) + '_' : '—'}`;
+}
+
+/* --- pause, lost connections, the end --- */
+function remotePause(p) {
+  if (!coop() || !S.inGame || S.mode === 'over') return;
+  if (p && (S.mode === 'play' || S.mode === 'transition')) {
+    CO.remotePause = true; pause(); CO.remotePause = false;
+    if (p.by !== CO.role) { const line = $('coPauseBy'); if (line) line.textContent = tr('coPausedBy', peerName()); }
+  } else if (!p && S.mode === 'paused' && !CO.waitTimer) {
+    CO.remotePause = true; resume(); CO.remotePause = false;
+  }
+}
+function crewGone(left) {
+  if (CO.alone) return;
+  if (S.mode === 'play' || S.mode === 'transition') { CO.remotePause = true; pause(); CO.remotePause = false; }
+  let left_s = left ? 0 : CREW_WAIT;
+  const paint = () => showOverlay(`
+    <h2>${tr('paused')}</h2>
+    <p>${left ? tr('coCrewLeft', peerName()) : tr('coLostCrew', peerName())}</p>
+    ${left_s > 0 ? `<p class="co-who" id="coCount">${tr('coWaitSec', left_s)}</p>` : ''}
+    <button class="cta" id="coAlone"${left_s > 0 ? ' disabled' : ''}>${tr('coAlone')}</button>
+    <button class="cta alt" id="coEnd">${tr('coEnd')}</button>
+  `, '#coEnd');
+  const wire = () => {
+    $('coAlone').addEventListener('click', () => { clearInterval(CO.waitTimer); CO.waitTimer = null; CO.alone = true; renderPeer(); resume(); });
+    $('coEnd').addEventListener('click', () => { clearInterval(CO.waitTimer); CO.waitTimer = null; captainEnd('home'); });
+  };
+  paint(); wire();
+  clearInterval(CO.waitTimer);
+  CO.waitTimer = setInterval(() => {
+    left_s = Math.max(0, left_s - 1);
+    const c = $('coCount');
+    if (c) c.textContent = tr('coWaitSec', left_s);
+    if (left_s === 0) { clearInterval(CO.waitTimer); CO.waitTimer = 'done'; paint(); wire(); }
+  }, 1000);
+}
+function crewBack() {
+  clearInterval(CO.waitTimer); CO.waitTimer = null;
+  toast(tr('coBackCrew', peerName()));
+  CO.ref.child('pause').set(null).catch(() => {});
+  if (S.mode === 'paused') { CO.remotePause = true; resume(); CO.remotePause = false; }
+  publishState(true);
+}
+// Captain: the game ends (ship sunk, all seas done, or the captain went home).
+function captainEnd(reason) {
+  if (CO.ended) return;
+  CO.ended = true;
+  clearInterval(CO.waitTimer); CO.waitTimer = null;
+  const final = { reason, h: S.score, g: CO.gScore, lv: S.level, t: Date.now() };
+  CO.ref.update({ phase: 'over', over: final, pause: null }).catch(() => {});
+  publishState(true);
+  coopFinish(reason, final);
+}
+// Crew: the captain ended it, or went silent.
+function crewEnd(reason, final) {
+  if (CO.ended) return;
+  CO.ended = true;
+  clearTimeout(CO.lostTimer);
+  coopFinish(reason, final || { reason, h: CO.peerScore, g: S.score, lv: S.level });
+}
+function coopFinish(reason, final) {
+  const wasPlaying = S.mode !== 'over';
+  S.mode = 'over'; S.transition = null;
+  clearInput(true);
+  recordGame(reason === 'sunk' ? 'sunk' : reason === 'won' ? 'won' : 'home');
+  if (reason === 'sunk' && wasPlaying) {
+    setTimeout(() => boom(G.shipX - G.PS * 8, G.shipCY, true), 250);
+    setTimeout(() => { boom(G.shipX + G.PS * 10, G.shipCY, true); sfx.boom(); }, 550);
+    sfx.lose();
+  }
+  setTimeout(() => showCoopEnd(reason, final), reason === 'sunk' ? 1500 : 300);
+}
+function showCoopEnd(reason, final) {
+  const me = CO.role === 'h' ? 'h' : 'g';
+  const rows = [
+    { who: 'h', name: me === 'h' ? playerName() : peerName(), role: tr('coCaptain'), pts: final.h || 0 },
+    { who: 'g', name: me === 'g' ? playerName() : peerName(), role: tr('coCrew'), pts: final.g || 0 },
+  ];
+  const top = Math.max(rows[0].pts, rows[1].pts);
+  const title = reason === 'sunk' ? tr('sinking') : reason === 'won' ? tr('allSeas') : tr('coEndTitle');
+  const line = reason === 'lost' ? tr('coLostCapt') : reason === 'captLeft' ? tr('coCaptLeft')
+    : tr('pauseLine', seaOf(final.lv || S.level).name, levelInSea(final.lv || S.level), sectorOf(final.lv || S.level).join(' · '), '').replace(/[^.]*\.\s*$/, '').trim();
+  showOverlay(`
+    <h2 class="${reason === 'sunk' ? 'bad' : ''}">${title}</h2>
+    <p>${esc(line)}</p>
+    <ol class="co-score">${rows.map(r => `
+      <li class="${r.pts === top && top > 0 ? 'top' : ''}${r.who === me ? ' me' : ''}">
+        <span><b>${esc(r.name)}</b><small>${r.role}</small></span><span class="val">${r.pts}</span>
+      </li>`).join('')}</ol>
+    ${CO.role === 'h' && reason !== 'home' ? `<button class="cta" id="coAgain"${CO.peerOnline ? '' : ' disabled'}>${tr('coAgain')}</button>` : ''}
+    ${CO.role === 'g' && (reason === 'sunk' || reason === 'won') ? `<p class="co-who">${tr('coWaitCapt')}</p>` : ''}
+    <button class="cta alt" id="goMenu">${tr('homeScreen')}</button>
+  `, '#goMenu');
+  if ($('coAgain')) $('coAgain').addEventListener('click', captainStart);
+  $('goMenu').addEventListener('click', () => {
+    coopLeave();
+    Object.assign(S, { subs: [], fx: [], ring: null, transition: null, level: 1, levelTime: 0, score: 0, lives: MAX_LIVES, inGame: false });
+    clearInput(true); updateHUD(); renderCheat();
+    showMenu();
+  });
+}
+function coopSeaEnd() {
+  const sea = seaOf(S.level), next = SEAS[SEAS.indexOf(sea) + 1];
+  if (!next) { captainEnd('won'); return; }
+  showOverlay(`
+    <canvas class="hero" aria-hidden="true"></canvas>
+    <h2>${sea.done}</h2>
+    <p>${tr('seaCleared', sea.levels, sectorOf(S.level).join(' · '))}</p>
+    ${next === BLACK_SEA ? `<p class="story">${tr('jamStory')}</p>` : ''}
+    <button class="cta" id="goSea">${next.ask}</button>
+    <button class="cta alt" id="goMenu">${tr('coEnd')}</button>
+  `);
+  $('goSea').addEventListener('click', () => {
+    initAudio(); hideOverlay();
+    S.lives = MAX_LIVES; updateHUD();
+    beginShift();
+    publishState(true);
+  });
+  $('goMenu').addEventListener('click', () => captainEnd('home'));
+}
+// A link like …/?room=KX7Q opens the join screen straight away (after the welcome window on a first start).
+const ROOM_FROM_URL = (() => {
+  try {
+    const u = new URL(location.href), c = (u.searchParams.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+    if (c) { u.searchParams.delete('room'); window.history.replaceState(null, '', u.pathname + (u.search || '') + u.hash); }   // window.: history() is the score list here
+    return c;
+  } catch (e) { return ''; }
+})();
+let roomLinkUsed = false;
+
 /* ---------- loop ---------- */
 let last = performance.now();
 function frame(now) {
@@ -2077,6 +2806,7 @@ function frame(now) {
   if (S.mode === 'play') update(dt);
   else if (S.mode === 'transition') updateTransition(dt);
   if (S.mode !== 'paused') updateFx(dt);
+  if (isCaptain() && S.inGame) publishState(false);
   if (I.down) updateKeyFill();
   musicTick();
   updateTimer();
