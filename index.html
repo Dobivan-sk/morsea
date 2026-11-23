@@ -601,7 +601,7 @@ function stat(path) {
 const S = {
   mode: 'menu',               // menu | play | transition | paused | over | won
   level: 1, levelTime: 0, lives: MAX_LIVES, score: 0, levelStartScore: 0, hitThisLevel: false,
-  subs: [], fx: [], ring: null, transition: null, jam: {},
+  subs: [], dying: [], fx: [], ring: null, transition: null, jam: {},
   radarT: 1, spawnT: 0.8, shake: 0, shipFlash: 0, nextId: 1,
   best: store.get('best', 0),
   tempo: MENU_MODES.includes(store.get('tempo', 'normal')) ? store.get('tempo', 'normal') : 'normal',
@@ -917,7 +917,7 @@ function startGame(level = 1, score = 0) {
   initAudio();
   Object.assign(S, {
     mode: 'play', level, levelTime: 0, lives: MAX_LIVES, score, levelStartScore: score, hitThisLevel: false, streak: 0,
-    subs: [], fx: [], ring: null, transition: null, radarT: 1, spawnT: 0.6, shake: 0, shipFlash: 0, resume: null,
+    subs: [], dying: [], fx: [], ring: null, transition: null, radarT: 1, spawnT: 0.6, shake: 0, shipFlash: 0, resume: null,
     inGame: true, recorded: false, jam: {}, startedAt: Date.now(),
   });
   stat('hra-' + (MODE_STAT[S.tempo] || S.tempo));
@@ -1017,7 +1017,7 @@ function fire(letter, digit) {
   }
   const li = base() + col;
   const sub = S.subs.find(s => s.li === li && s.row === row);
-  if (sub) S.subs = S.subs.filter(s => s !== sub);   // resolved now so it can't fire while the shell flies
+  if (sub) holdCell(li, row);   // resolved now so it can't fire while the shell flies, but stays on the map until it lands
   const to = cellCenter(li, row);
   sfx.fire();
   S.fx.push({ type: 'mark', li, row, t: 0, dur: 1.2, label: tr('fireAt', coord) });
@@ -1025,6 +1025,7 @@ function fire(letter, digit) {
     type: 'shell', x0: G.shipX, y0: G.shipY + G.PS * 3, x1: to.x, y1: to.y, t: 0, dur: 0.4,
     onDone: () => {
       if (sub) {
+        dropDying(li, row);
         S.streak++;
         const mult = streakMult();
         const pts = (100 + 10 * S.level + Math.max(0, Math.round((sub.fuse - sub.age) * 10))) * mult;
@@ -1308,6 +1309,16 @@ function resume() {
 }
 
 /* ---------- effects ---------- */
+// A submarine that has been shot at leaves S.subs at once (it can no longer fire or be hit twice) but is
+// still drawn from S.dying until the shell lands and it goes up in the explosion.
+// hold: a shell is on its way; otherwise it is kept only until 'until' (the crew waiting to see why it vanished).
+function holdCell(li, row) {
+  const sub = S.subs.find(s => s.li === li && s.row === row);
+  if (sub) { S.subs = S.subs.filter(s => s !== sub); S.dying.push({ sub, hold: true }); return; }
+  const d = S.dying.find(d => d.sub.li === li && d.sub.row === row);
+  if (d) d.hold = true;
+}
+function dropDying(li, row) { S.dying = S.dying.filter(d => !(d.sub.li === li && d.sub.row === row)); }
 function boom(x, y, big) {
   const parts = [], n = big ? 30 : 20;
   for (let i = 0; i < n; i++) {
@@ -1334,6 +1345,7 @@ function updateFx(dt) {
     if (f.t >= f.dur && !f.done) { f.done = true; if (f.onDone) f.onDone(); }
   }
   S.fx = S.fx.filter(f => !f.done);
+  if (S.dying.length) S.dying = S.dying.filter(d => d.hold || anim < d.until);
   S.shake = Math.max(0, S.shake - dt * 2.5);
   S.shipFlash = Math.max(0, S.shipFlash - dt);
 }
@@ -1492,7 +1504,7 @@ function drawSubs() {
   const P = Math.max(2, Math.floor(Math.min(G.cellW / 24, G.cellH / 11)));
   const sw = SUB[0].length * P, shh = SUB.length * P;
   const fs = Math.max(8, Math.min(13, Math.round(G.cellH * 0.26)));
-  for (const s of S.subs) {
+  for (const s of S.subs.concat(S.dying.map(d => d.sub))) {
     if (anim < s.revealAt) continue;
     // a contact stays on the map for REVEAL_TIME after the ring finds it, fading out over its last 0.4 s
     const seen = anim - s.revealAt;
@@ -2222,7 +2234,7 @@ function showDock(d) {
 
 function toMenu() {
   recordGame('home');
-  Object.assign(S, { subs: [], fx: [], ring: null, transition: null, level: 1, levelTime: 0, score: 0, lives: MAX_LIVES, inGame: false });
+  Object.assign(S, { subs: [], dying: [], fx: [], ring: null, transition: null, level: 1, levelTime: 0, score: 0, lives: MAX_LIVES, inGame: false });
   clearInput(true);
   updateHUD(); renderCheat();
   showMenu();
@@ -2304,7 +2316,7 @@ const CAPTAIN_GRACE = 8;         // seconds the crew waits before it gives up on
 const CO = {
   on: false, role: null, code: '', db: null, uid: null, ref: null, subs: [],
   peer: null, peerOnline: false, peerLetter: '', peerScore: 0,
-  gScore: 0, gStreak: 0, sunk: new Map(), lastSnap: 0, lastTyping: null,
+  gScore: 0, gStreak: 0, sunk: new Map(), myShells: [], lastSnap: 0, lastTyping: null,
   alone: false, waitTimer: null, lostTimer: null, ended: false, remotePause: false,
   briefing: false, briefed: false,   // the How to play together window is open / was read in this room
 };
@@ -2340,7 +2352,7 @@ function coopReset() {
   Object.assign(CO, { on: false, role: null, code: '', ref: null, peer: null, peerOnline: false, peerLetter: '', peerScore: 0,
     gScore: 0, gStreak: 0, lastTyping: null, alone: false, waitTimer: null, lostTimer: null, ended: false, remotePause: false,
     briefing: false, briefed: false });
-  CO.sunk.clear();
+  CO.sunk.clear(); CO.myShells = [];
   renderPeer();
 }
 // Leaves the room for good: the captain deletes it, the crew steps off the ship.
@@ -2664,7 +2676,7 @@ function drawBriefArt(cvs) {
 function captainStart() {
   if (!CO.peer) return;
   Object.assign(CO, { gScore: 0, gStreak: 0, alone: false, ended: false, lastSnap: 0 });
-  CO.sunk.clear();
+  CO.sunk.clear(); CO.myShells = [];
   S.tempo = 'coop';
   CO.ref.update({ phase: 'play', over: null, ev: null, cmd: null, pause: null, state: null }).catch(() => {});
   startGame(1, 0);
@@ -2704,7 +2716,7 @@ function resolveShot(by, letter, digit) {
   const sub = S.subs.find(s => s.li === li && s.row === row);
   const res = { li, row, coord: spoken(letter, digit), hit: !!sub, pts: 0, mult: 1, late: false };
   if (sub) {
-    S.subs = S.subs.filter(s => s !== sub);
+    holdCell(li, row);
     CO.sunk.set(key, anim);
     const streak = by === 'h' ? ++S.streak : ++CO.gStreak;
     res.mult = multOf(streak);
@@ -2738,6 +2750,7 @@ function gunAt(by) {
 }
 function shotFx(by, res, own, shell) {
   const to = cellCenter(res.li, res.row), gun = gunAt(by);
+  if (res.hit) holdCell(res.li, res.row);
   if (shell) {
     sfx.fire();
     S.fx.push({ type: 'mark', li: res.li, row: res.row, t: 0, dur: 1.2, color: own ? C.amber : C.sonar,
@@ -2748,6 +2761,7 @@ function shotFx(by, res, own, shell) {
 function shotResult(by, res, own) {
   const to = cellCenter(res.li, res.row);
   if (res.hit) {
+    dropDying(res.li, res.row);
     boom(to.x, to.y, false); sfx.boom();
     floatText(to.x, to.y, '+' + res.pts + (res.mult > 1 ? ' ×' + res.mult : ''), own ? C.amber : C.sonar);
     if (own) {
@@ -2773,8 +2787,23 @@ function crewFire(letter, digit) {
   const to = cellCenter(li, row), gun = gunAt('g');
   sfx.fire();
   S.fx.push({ type: 'mark', li, row, t: 0, dur: 1.2, label: tr('fireAt', coord) });
-  S.fx.push({ type: 'shell', x0: gun.x, y0: gun.y, x1: to.x, y1: to.y, t: 0, dur: 0.4 });
+  // the captain's verdict may come back before this shell lands: it is shown only on impact
+  const pend = { li, row, res: null, landed: false };
+  CO.myShells.push(pend);
+  holdCell(li, row);
+  S.fx.push({ type: 'shell', x0: gun.x, y0: gun.y, x1: to.x, y1: to.y, t: 0, dur: 0.4, onDone: () => {
+    pend.landed = true;
+    if (pend.res) crewShotDone(pend);
+    else {   // no verdict yet: keep the target a moment longer, then let it go
+      const d = S.dying.find(d => d.sub.li === li && d.sub.row === row);
+      if (d) { d.hold = false; d.until = anim + 1; }
+    }
+  } });
   CO.ref.child('cmd').push({ type: 'fire', l: letter, d: digit }).catch(() => {});
+}
+function crewShotDone(pend) {
+  CO.myShells = CO.myShells.filter(p => p !== pend);
+  shotResult('g', pend.res, true);
 }
 function crewUpdate(dt) {
   S.levelTime = Math.min(LEVEL_TIME, S.levelTime + dt);
@@ -2800,7 +2829,10 @@ function crewApply(st) {
   if (S.mode === 'play' && st.mode === 'play' && st.lv === S.level) {
     S.levelTime = st.lt || 0;
     const have = new Map(S.subs.map(s => [s.id, s]));
-    S.subs = (st.subs || []).map(([id, li, row, age, fuse, fl]) => {
+    const ids = new Set((st.subs || []).map(a => a[0]));
+    for (const o of S.subs) if (!ids.has(o.id)) S.dying.push({ sub: o, hold: false, until: anim + 0.6 });
+    const dyingIds = new Set(S.dying.map(d => d.sub.id));
+    S.subs = (st.subs || []).filter(a => !dyingIds.has(a[0])).map(([id, li, row, age, fuse, fl]) => {
       const o = have.get(id);
       if (o) { o.age = age; o.fuse = fuse; return o; }
       return { id, li, row, age, fuse, flip: !!fl, revealAt: -99 };
@@ -2813,10 +2845,16 @@ function crewEvent(e) {
   if (e.type === 'ping') { sweep(); sfx.ping(); }
   else if (e.type === 'torp') {
     S.subs = S.subs.filter(s => !(s.li === e.li && s.row === e.row));
+    dropDying(e.li, e.row);
     torpedoFx(e.li, e.row, () => shipHitFx());
   } else if (e.type === 'shot') {
     const own = e.by === 'g';
-    shotFx(e.by, e, own, !own);
+    const pend = own && CO.myShells.find(p => p.li === e.li && p.row === e.row && !p.res);
+    if (pend) {
+      pend.res = e;
+      if (e.hit) holdCell(e.li, e.row);
+      if (pend.landed) crewShotDone(pend);
+    } else shotFx(e.by, e, own, !own);
   } else if (e.type === 'bonus') {
     floatText(G.shipX, G.shipY - G.PS * 4, tr('bonus'), C.sonar);
     addXP(e.pts || 0);
@@ -2941,7 +2979,7 @@ function showCoopEnd(reason, final) {
   if ($('coAgain')) $('coAgain').addEventListener('click', captainStart);
   $('goMenu').addEventListener('click', () => {
     coopLeave();
-    Object.assign(S, { subs: [], fx: [], ring: null, transition: null, level: 1, levelTime: 0, score: 0, lives: MAX_LIVES, inGame: false });
+    Object.assign(S, { subs: [], dying: [], fx: [], ring: null, transition: null, level: 1, levelTime: 0, score: 0, lives: MAX_LIVES, inGame: false });
     clearInput(true); updateHUD(); renderCheat();
     showMenu();
   });
