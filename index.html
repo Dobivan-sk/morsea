@@ -107,6 +107,11 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .co-who{font-size:18px;color:var(--ink-dim)}
 .co-who.ok{color:var(--sonar)}
 .co-in{font-family:var(--f-display);font-size:28px;letter-spacing:.3em;text-align:center;text-transform:uppercase}
+.co-brief{align-self:center;image-rendering:pixelated;border:2px solid var(--panel-edge)}
+.co-steps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:19px;text-align:left}
+.co-steps li{display:flex;align-items:center;gap:10px}
+.co-steps b{flex:none;display:grid;place-items:center;width:24px;height:24px;background:var(--amber);color:var(--abyss);font-family:var(--f-display);font-size:13px}
+.co-steps code{font-family:var(--f-body);color:var(--amber);font-size:20px;white-space:nowrap}
 .co-score{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
 .co-score li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border:2px solid var(--panel-edge)}
 .co-score li span:first-child{display:flex;flex-direction:column;text-align:left}
@@ -399,6 +404,12 @@ const L10N = {
     coWaitSec: n => `Ešte ${n} s`, coAlone: 'Pokračovať sám', coEnd: 'Ukončiť hru', coBackCrew: n => `${n} je späť na palube`,
     coEndTitle: 'Koniec misie', coLostCapt: 'Spojenie s kapitánom sa stratilo.', coCaptLeft: 'Kapitán ukončil hru.',
     coAgain: 'Znova s posádkou', coSeaWait: 'Kapitán rozhoduje o ďalšej plavbe…',
+    coHowTitle: 'Ako hrať spolu', coStep1: 'Najskôr písmeno stĺpca, vodorovne. Napríklad B:', coStep2: 'Potom číslo riadku, zvislo. Napríklad 7:',
+    coHowText: 'Obaja ste na jednej lodi. Ubráňte ju zadávaním súradníc Morzeovkou (najskôr písmená, potom číslice) pre potopenie ponoriek vaším delostrelectvom.',
+    coHow1: 'Kapitán strieľa z provy, posádka z kormy. Môžete strieľať na hocijakú ponorku.',
+    coHow2: 'Životy lode sú spoločné, body a skúsenosti má každý vlastné.',
+    coHow3: 'Tlačidlo Nápoveda zapne alebo vypne morzeovku pri súradniciach.',
+    coReady: 'Rozumiem, vyplávať', coWaitMate: n => `Čaká sa na spoluhráča ${n}…`, coMateReady: n => `${n} je pripravený.`,
     coShare: 'Poslať pozvánku', coCopied: 'Pozvánka je skopírovaná, vlož ju do správy.',
     coInvite: (l, c) => `Poď so mnou brániť loď ${l} v hre Morse.-! Kód miestnosti: ${c}`,
     lastGames: 'Posledných 10 hier', noGames: 'Zatiaľ žiadna odohraná hra. Vyplávaj a tvoje skóre sa tu objaví.',
@@ -490,6 +501,12 @@ const L10N = {
     coWaitSec: n => `${n} s left`, coAlone: 'Carry on alone', coEnd: 'End the game', coBackCrew: n => `${n} is back aboard`,
     coEndTitle: 'Mission over', coLostCapt: 'Lost the connection to the captain.', coCaptLeft: 'The captain ended the game.',
     coAgain: 'Again with the crew', coSeaWait: 'The captain decides where to sail next…',
+    coHowTitle: 'How to play together', coStep1: 'First the column letter, across. For example B:', coStep2: 'Then the row number, down. For example 7:',
+    coHowText: 'You’re both on one ship. Defend it by keying coordinates in Morse code (letters first, then numbers) so your guns sink the submarines.',
+    coHow1: 'The captain fires from the bow, the crew from the stern. Either of you can fire at any submarine.',
+    coHow2: 'The ship’s lives are shared; points and experience are your own.',
+    coHow3: 'The Hints button turns the Morse code by the coordinates on or off.',
+    coReady: 'Got it, set sail', coWaitMate: n => `Waiting for ${n}…`, coMateReady: n => `${n} is ready.`,
     coShare: 'Send invite', coCopied: 'Invite copied – paste it into a message.',
     coInvite: (l, c) => `Come and defend the ${l} with me in Morse.-! Room code: ${c}`,
     lastGames: 'Last 10 games', noGames: 'No games played yet. Set sail and your score will show up here.',
@@ -2289,6 +2306,7 @@ const CO = {
   peer: null, peerOnline: false, peerLetter: '', peerScore: 0,
   gScore: 0, gStreak: 0, sunk: new Map(), lastSnap: 0, lastTyping: null,
   alone: false, waitTimer: null, lostTimer: null, ended: false, remotePause: false,
+  briefing: false, briefed: false,   // the How to play together window is open / was read in this room
 };
 const coop = () => CO.on && S.tempo === 'coop';
 const isCrew = () => coop() && CO.role === 'g';
@@ -2320,7 +2338,8 @@ function coopReset() {
   CO.subs = [];
   clearInterval(CO.waitTimer); clearTimeout(CO.lostTimer);
   Object.assign(CO, { on: false, role: null, code: '', ref: null, peer: null, peerOnline: false, peerLetter: '', peerScore: 0,
-    gScore: 0, gStreak: 0, lastTyping: null, alone: false, waitTimer: null, lostTimer: null, ended: false, remotePause: false });
+    gScore: 0, gStreak: 0, lastTyping: null, alone: false, waitTimer: null, lostTimer: null, ended: false, remotePause: false,
+    briefing: false, briefed: false });
   CO.sunk.clear();
   renderPeer();
 }
@@ -2405,6 +2424,11 @@ async function coopCreate() {
   });
   listen(ref.child('typing/g'), 'value', s => { CO.peerLetter = s.val() || ''; renderPeer(); });
   listen(ref.child('pause'), 'value', s => remotePause(s.val()));
+  listen(ref.child('ready'), 'value', s => {
+    const r = s.val() || {};
+    if (CO.briefing && r.h && r.g) { CO.briefing = false; CO.briefed = true; captainStart(); }
+    else if (CO.briefing) renderBriefWait(r);
+  });
   showLobby();
 }
 // Invites lead to the public GitHub page (its link preview shows the Co-op picture); a local copy links to itself.
@@ -2423,7 +2447,7 @@ function showLobby() {
     <button class="cta alt" id="goBack">${tr('back')}</button>
   `, '#goBack', 'co-lobby');
   drawQr($('coQr'), roomLink());
-  $('coGo').addEventListener('click', captainStart);
+  $('coGo').addEventListener('click', () => (CO.briefed ? captainStart() : captainBrief()));
   $('coShare').addEventListener('click', shareInvite);
   $('goBack').addEventListener('click', () => { coopLeave(); showMenu(); });
   renderLobby();
@@ -2511,6 +2535,8 @@ async function coopJoin(raw) {
   listen(ref.child('phase'), 'value', s => {
     const ph = s.val();
     if (ph === null && !CO.ended) { if (S.inGame && S.mode !== 'over') crewEnd('captLeft'); else { coopReset(); showCoop(tr('coCaptLeft')); } return; }
+    if (ph === 'brief' && !S.inGame) showBrief();
+    else if (ph === 'lobby' && !S.inGame && CO.briefing) { CO.briefing = false; crewWaitScreen(); }
     if (ph === 'play' && (!S.inGame || S.mode === 'over')) crewStart();
   });
   listen(ref.child('over'), 'value', s => { const o = s.val(); if (o && S.inGame && S.mode !== 'over') crewEnd(o.reason, o); });
@@ -2518,14 +2544,120 @@ async function coopJoin(raw) {
   listen(ref.child('ev'), 'child_added', s => { const e = s.val(); s.ref.remove().catch(() => {}); crewEvent(e); });
   listen(ref.child('typing/h'), 'value', s => { CO.peerLetter = s.val() || ''; renderPeer(); });
   listen(ref.child('pause'), 'value', s => remotePause(s.val()));
+  listen(ref.child('ready'), 'value', s => { if (CO.briefing) renderBriefWait(s.val() || {}); });
   if (room.phase === 'play') crewStart();
-  else showOverlay(`
+  else if (room.phase === 'brief') showBrief();
+  else crewWaitScreen();
+}
+function crewWaitScreen() {
+  showOverlay(`
     <h2>${tr('coTitle')}</h2>
     <p>${tr('coJoined', CO.peer.name, CO.peer.ship)}</p>
     <p class="co-who" role="status">${tr('coWaitCapt')}</p>
     <button class="cta alt" id="goBack">${tr('back')}</button>
   `, '#goBack');
-  if ($('goBack')) $('goBack').addEventListener('click', () => { coopLeave(); showMenu(); });
+  $('goBack').addEventListener('click', () => { coopLeave(); showMenu(); });
+}
+
+/* --- before the first sail of a room: how to play together; the game starts once both have read it --- */
+function captainBrief() {
+  if (!CO.peer) return;
+  CO.ref.update({ phase: 'brief', ready: null }).catch(() => {});
+  showBrief();
+}
+function showBrief() {
+  CO.briefing = true;
+  showOverlay(`
+    <h2>${tr('coHowTitle')}</h2>
+    <canvas class="co-brief" id="coArt" aria-hidden="true"></canvas>
+    <ol class="co-steps">
+      <li><b>1</b><span>${tr('coStep1')} <code>${pretty(MORSE.B)}</code></span></li>
+      <li><b>2</b><span>${tr('coStep2')} <code>${pretty(MORSE['7'])}</code></span></li>
+    </ol>
+    <p>${tr('coHowText')}</p>
+    <ul class="rules">${['coHow1', 'coHow2', 'coHow3'].map(k => `<li><span>${tr(k)}</span></li>`).join('')}</ul>
+    <button class="cta" id="coReady">${tr('coReady')}</button>
+    <p class="co-who" id="coReadyWho" role="status"></p>
+    <button class="cta alt" id="goBack">${tr('back')}</button>
+  `, '#coReady');
+  drawBriefArt($('coArt'));
+  $('coReady').addEventListener('click', () => {
+    $('coReady').disabled = true;
+    CO.ref.child('ready/' + CO.role).set(true).catch(() => {});
+  });
+  $('goBack').addEventListener('click', () => {
+    CO.briefing = false;
+    if (CO.role === 'h') { CO.ref.update({ phase: 'lobby', ready: null }).catch(() => {}); showLobby(); }
+    else { coopLeave(); showMenu(); }
+  });
+}
+function renderBriefWait(r) {
+  const who = $('coReadyWho'), btn = $('coReady');
+  if (!who || !btn) return;
+  const me = !!r[CO.role], other = !!r[CO.role === 'h' ? 'g' : 'h'];
+  btn.disabled = me;
+  who.textContent = me && !other ? tr('coWaitMate', peerName()) : !me && other ? tr('coMateReady', peerName()) : '';
+}
+// The briefing picture in the game's own pixel style: a small grid, a submarine on B7,
+// arrow 1 along the letters to column B, arrow 2 down the numbers to row 7, and who fires from where.
+function drawBriefArt(cvs) {
+  const cssW = Math.min(330, card.clientWidth - 40), cssH = Math.round(cssW * 0.78);
+  const dpr = window.devicePixelRatio || 1;
+  cvs.width = Math.round(cssW * dpr); cvs.height = Math.round(cssH * dpr);
+  cvs.style.width = cssW + 'px'; cvs.style.height = cssH + 'px';
+  const c = cvs.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
+  const gut = Math.round(cssW * 0.13), headH = Math.round(cssH * 0.12), laneH = Math.round(cssH * 0.15);
+  const cellW = (cssW - gut) / 3, cellH = (cssH - headH - laneH) / 10;
+  const rowTop = r => headH + (r < 5 ? r * cellH : laneH + r * cellH);
+  c.fillStyle = C.sea; c.fillRect(0, 0, cssW, cssH);
+  c.fillStyle = C.abyss; c.globalAlpha = 0.6; c.fillRect(0, 0, cssW, headH); c.globalAlpha = 0.35; c.fillRect(0, headH, gut, cssH); c.globalAlpha = 1;
+  c.fillStyle = C.lane; c.fillRect(0, headH + 5 * cellH, cssW, laneH);
+  // grid
+  c.strokeStyle = C.grid; c.lineWidth = 1; c.setLineDash([2, 3]); c.beginPath();
+  for (let k = 0; k <= 3; k++) { const x = Math.round(gut + k * cellW) + 0.5; c.moveTo(x, headH); c.lineTo(x, headH + 5 * cellH); c.moveTo(x, headH + 5 * cellH + laneH); c.lineTo(x, cssH); }
+  for (let r = 0; r <= 10; r++) { const y = Math.round(r <= 5 ? headH + r * cellH : headH + laneH + r * cellH) + 0.5; c.moveTo(gut, y); c.lineTo(cssW, y); }
+  c.stroke(); c.setLineDash([]);
+  // labels
+  const fs = Math.max(9, Math.round(headH * 0.5));
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `700 ${fs}px Silkscreen, "Silkscreen SK", monospace`;
+  ['A', 'B', 'C'].forEach((ch, k) => { c.fillStyle = ch === 'B' ? C.amber : C.ink; c.fillText(ch, gut + (k + 0.5) * cellW, headH / 2 + 1); });
+  c.font = `700 ${Math.max(8, Math.round(cellH * 0.62))}px Silkscreen, "Silkscreen SK", monospace`;
+  DIGITS.forEach((d, r) => { c.fillStyle = d === '7' ? C.amber : C.inkDim; c.fillText(d, gut / 2, rowTop(r) + cellH / 2 + 1); });
+  // the ship, with the captain at the bow and the crew at the stern
+  const PS = Math.max(1, Math.floor(Math.min(laneH / 15, (cellW * 1.6) / SHIP[0].length)));
+  const sw = SHIP[0].length * PS, shx = Math.round(gut + 1.5 * cellW - sw / 2), shy = Math.round(headH + 5 * cellH + laneH - SHIP.length * PS - 2);
+  drawSprite(c, SHIP, shx, shy, PS, SHIP_PAL, false);
+  c.font = `700 ${Math.max(7, Math.round(laneH * 0.26))}px Silkscreen, "Silkscreen SK", monospace`;
+  c.textBaseline = 'middle';
+  const ly = headH + 5 * cellH + laneH * 0.32;
+  c.fillStyle = C.sonar; c.textAlign = 'right'; c.fillText(tr('coCrew').toUpperCase(), shx - 3, ly);
+  c.fillStyle = C.amber; c.textAlign = 'left'; c.fillText(tr('coCaptain').toUpperCase(), shx + sw + 3, ly);
+  // the target: submarine on B7 in brackets
+  const tx = gut + 1.5 * cellW, tyc = rowTop(6) + cellH / 2;
+  const P = Math.max(1, Math.floor(Math.min(cellW / 22, cellH / 7)));
+  drawSprite(c, SUB, Math.round(tx - SUB[0].length * P / 2), Math.round(tyc - SUB.length * P / 2), P, SUB_SONAR, false);
+  c.strokeStyle = C.amber; c.lineWidth = 2;
+  const bx = gut + cellW + 3, by = rowTop(6) + 2, bw = cellW - 6, bh = cellH - 4, bl = Math.max(4, cellH * 0.35);
+  c.beginPath();
+  c.moveTo(bx, by + bl); c.lineTo(bx, by); c.lineTo(bx + bl, by); c.moveTo(bx + bw - bl, by); c.lineTo(bx + bw, by); c.lineTo(bx + bw, by + bl);
+  c.moveTo(bx + bw, by + bh - bl); c.lineTo(bx + bw, by + bh); c.lineTo(bx + bw - bl, by + bh); c.moveTo(bx + bl, by + bh); c.lineTo(bx, by + bh); c.lineTo(bx, by + bh - bl);
+  c.stroke();
+  // arrows: 1 along the letters, 2 down the numbers
+  const arrow = (x1, y1, x2, y2, n) => {
+    c.strokeStyle = C.amber; c.fillStyle = C.amber; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    const a = Math.atan2(y2 - y1, x2 - x1), h = 8;
+    c.beginPath(); c.moveTo(x2 + Math.cos(a) * 2, y2 + Math.sin(a) * 2);
+    c.lineTo(x2 - Math.cos(a - 0.6) * h, y2 - Math.sin(a - 0.6) * h); c.lineTo(x2 - Math.cos(a + 0.6) * h, y2 - Math.sin(a + 0.6) * h); c.closePath(); c.fill();
+    const s = Math.max(12, Math.round(headH * 0.62));
+    c.fillStyle = C.amber; c.fillRect(Math.round(x1 - s / 2), Math.round(y1 - s / 2), s, s);
+    c.fillStyle = C.abyss; c.font = `700 ${Math.round(s * 0.7)}px Silkscreen, monospace`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(String(n), x1, y1 + 1);
+  };
+  arrow(gut + 0.18 * cellW, headH + cellH * 0.55, tx - fs * 0.9, headH + cellH * 0.55, 1);
+  arrow(tx + cellW * 0.32, headH + cellH * 1.3, tx + cellW * 0.32, rowTop(6) - 3, 2);
 }
 
 /* --- starting a game --- */
@@ -2540,6 +2672,7 @@ function captainStart() {
   publishState(true);
 }
 function crewStart() {
+  CO.briefing = false;
   clearTimeout(CO.lostTimer);
   CO.ended = false;
   S.tempo = 'coop';
